@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Puter.js Bridge</title>
+    <script src="https://js.puter.com/v2/"></script>
+</head>
+<body>
+    <script>
+        // Bridge functions to interact with Puter.js from native Android code
+        async function puterChat(query) {
+            try {
+                const response = await puter.ai.chat({
+                    messages: [{ role: 'user', content: query }]
+                });
+                return response;
+            } catch (error) {
+                console.error('Chat error:', error);
+                throw error;
+            }
+        }
+
+        async function puterTxt2Img(prompt) {
+            try {
+                const response = await puter.ai.generateImage({
+                    prompt: prompt
+                });
+                return response;
+            } catch (error) {
+                console.error('Txt2Img error:', error);
+                throw error;
+            }
+        }
+
+        async function puterImg2Txt(image) {
+            try {
+                // Assuming image is a base64 string or file object
+                const response = await puter.ai.describeImage({
+                    image: image
+                });
+                return response;
+            } catch (error) {
+                console.error('Img2Txt error:', error);
+                throw error;
+            }
+        }
+
+        async function puterTxt2Speech(text) {
+            try {
+                const response = await puter.ai.generateSpeech({
+                    text: text
+                });
+                return response;
+            } catch (error) {
+                console.error('Txt2Speech error:', error);
+                throw error;
+            }
+        }
+
+        async function puterKvGet(key) {
+            try {
+                const response = await puter.keyValue.get(key);
+                return response;
+            } catch (error) {
+                console.error('KV Get error:', error);
+                throw error;
+            }
+        }
+
+        async function puterKvSet(key, value) {
+            try {
+                const response = await puter.keyValue.set(key, value);
+                return response;
+            } catch (error) {
+                console.error('KV Set error:', error);
+                throw error;
+            }
+        }
+
+        async function puterAuthSignIn() {
+            try {
+                const response = await puter.auth.signIn();
+                return response;
+            } catch (error) {
+                console.error('Auth Sign In error:', error);
+                throw error;
+            }
+        }
+
+        async function puterAuthSignOut() {
+            try {
+                const response = await puter.auth.signOut();
+                return response;
+            } catch (error) {
+                console.error('Auth Sign Out error:', error);
+                throw error;
+            }
+        }
+
+        function puterAuthIsSignedIn() {
+            try {
+                return puter.auth.isSignedIn();
+            } catch (error) {
+                console.error('Auth Check error:', error);
+                return false;
+            }
+        }
+
+        async function puterAuthGetUser() {
+            try {
+                const response = await puter.auth.getUser();
+                return response;
+            } catch (error) {
+                console.error('Get User error:', error);
+                throw error;
+            }
+        }
+
+        // Handle responses back to Android
+        function handleResponse(response, callbackId) {
+            if (window.Android) {
+                window.Android.onAIResponse(JSON.stringify(response), callbackId);
+            }
+        }
+
+        function handleError(error, callbackId) {
+            if (window.Android) {
+                window.Android.onAIError(error.message, callbackId);
+            }
+        }
+
+        // Listen for auth events and notify Android
+        if (puter.auth) {
+            puter.auth.onAuth = function(user) {
+                if (window.Android) {
+                    window.Android.onAuthSuccess(JSON.stringify(user));
+                }
+            };
+        }
+
+        // Ready indicator
+        window.puterBridgeReady = true;
+        
+        console.log("Puter.js bridge ready");
+    </script>
+</body>
+</html>

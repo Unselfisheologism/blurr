@@ -12,9 +12,6 @@
         tools:ignore="QueryAllPackagesPermission" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
-<!--    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />-->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:name=".MyApplication"
@@ -91,7 +88,20 @@
         <activity android:name=".triggers.ui.ChooseTriggerTypeActivity" android:exported="false" android:label="Choose Trigger Type" android:theme="@style/Theme.Blurr" android:screenOrientation="portrait" />
         <activity android:name=".ProPurchaseActivity" android:exported="false" android:label="Upgrade to Pro" android:theme="@style/Theme.Blurr" android:screenOrientation="portrait" />
         <activity android:name=".MomentsActivity" android:exported="false" android:label="Moments" android:theme="@style/Theme.Blurr" android:screenOrientation="portrait" />
-
+        
+        <!-- Puter.js Authentication Activity -->
+        <activity android:name=".activities.PuterAuthActivity" 
+            android:exported="true" 
+            android:label="Puter Authentication" 
+            android:theme="@style/Theme.Blurr" 
+            android:screenOrientation="portrait">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="blurr" android:host="puter-auth-callback" />
+            </intent-filter>
+        </activity>
 
         <!-- Your Other Services -->
         <service
@@ -106,16 +116,6 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
         </service>
-
-<!--        <service
-            android:name=".ContentModerationService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />-->
-
-<!--        <service
-            android:name=".services.AgentTaskService"
-            android:exported="false"
-            android:foregroundServiceType="connectedDevice" />-->
 
         <service
             android:name=".v2.AgentService"
@@ -153,6 +153,13 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+        
+        <!-- Puter.js Service -->
+        <service
+            android:name=".services.PuterService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
 
         <!-- Your Widget Provider -->
         <receiver
