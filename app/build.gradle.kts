@@ -160,7 +160,7 @@ dependencies {
     implementation("com.google.firebase:firebase-crashlytics-ndk")
     implementation(libs.firebase.firestore)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
-    implementation("com.android.billingclient:billing-ktx:7.0.0")
+    
 }
 
 // Task to increment version for release builds

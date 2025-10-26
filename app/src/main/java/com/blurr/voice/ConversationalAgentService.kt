@@ -35,7 +35,6 @@ import com.blurr.voice.utilities.TTSManager
 import com.blurr.voice.utilities.addResponse
 import com.blurr.voice.utilities.getReasoningModelApiResponse
 import com.blurr.voice.data.MemoryManager
-import com.blurr.voice.utilities.FreemiumManager
 import com.blurr.voice.utilities.PandaState
 import com.blurr.voice.utilities.UserProfileManager
 import com.blurr.voice.utilities.VisualFeedbackManager
@@ -78,7 +77,6 @@ class ConversationalAgentService : Service() {
     private val visualFeedbackManager by lazy { VisualFeedbackManager.getInstance(this) }
     private val pandaStateManager by lazy { PandaStateManager.getInstance(this) }
     private var isTextModeActive = false
-    private val freemiumManager by lazy { FreemiumManager() }
     private val servicePermissionManager by lazy { ServicePermissionManager(this) }
 
     private var clarificationAttempts = 0
@@ -570,77 +568,67 @@ class ConversationalAgentService : Service() {
                         Log.d("ConvAgent", "Model identified a task. Checking for clarification...")
                         // --- NEW: Check if the task instruction needs clarification ---
                         removeClarificationQuestions()
-                        if(freemiumManager.canPerformTask()){
-                            Log.d("ConvAgent", "Allowance check passed. Proceeding with task.")
+                        
+                        Log.d("ConvAgent", "Allowance check passed. Proceeding with task.")
 
-                            if (clarificationAttempts < maxClarificationAttempts) {
-                                val (needsClarification, questions) = checkIfClarificationNeeded(
-                                    decision.instruction
-                                )
-                                Log.d("ConcAgent", needsClarification.toString())
-                                Log.d("ConcAgent", questions.toString())
+                        if (clarificationAttempts < maxClarificationAttempts) {
+                            val (needsClarification, questions) = checkIfClarificationNeeded(
+                                decision.instruction
+                            )
+                            Log.d("ConcAgent", needsClarification.toString())
+                            Log.d("ConcAgent", questions.toString())
 
-                                if (needsClarification) {
-                                    // Track clarification needed
-                                    val clarificationBundle = android.os.Bundle().apply {
-                                        putInt("clarification_attempt", clarificationAttempts + 1)
-                                        putInt("questions_count", questions.size)
-                                    }
-                                    firebaseAnalytics.logEvent("task_clarification_needed", clarificationBundle)
-                                    
-                                    clarificationAttempts++
-                                    displayClarificationQuestions(questions)
-                                    val questionToAsk =
-                                        "I can help with that, but first: ${questions.joinToString(" and ")}"
-                                    Log.d(
-                                        "ConvAgent",
-                                        "Task needs clarification. Asking: '$questionToAsk' (Attempt $clarificationAttempts/$maxClarificationAttempts)"
-                                    )
-                                    conversationHistory = addResponse(
-                                        "model",
-                                        "Clarification needed for task: ${decision.instruction}",
-                                        conversationHistory
-                                    )
-                                    trackMessage("model", questionToAsk, "clarification")
-                                    speakAndThenListen(questionToAsk, false)
-                                } else {
-                                    Log.d(
-                                        "ConvAgent",
-                                        "Task is clear. Executing: ${decision.instruction}"
-                                    )
-                                    
-                                    // Track task execution
-                                    firebaseAnalytics.logEvent("task_executed", taskBundle)
-                                    
-                                    val originalInstruction = decision.instruction
-                                    AgentService.start(applicationContext, originalInstruction)
-                                    trackMessage("model", decision.reply, "task_confirmation")
-                                    gracefulShutdown(decision.reply, "task_executed")
+                            if (needsClarification) {
+                                // Track clarification needed
+                                val clarificationBundle = android.os.Bundle().apply {
+                                    putInt("clarification_attempt", clarificationAttempts + 1)
+                                    putInt("questions_count", questions.size)
                                 }
+                                firebaseAnalytics.logEvent("task_clarification_needed", clarificationBundle)
+                                
+                                clarificationAttempts++
+                                displayClarificationQuestions(questions)
+                                val questionToAsk =
+                                    "I can help with that, but first: ${questions.joinToString(" and ")}"
+                                Log.d(
+                                    "ConvAgent",
+                                    "Task needs clarification. Asking: '$questionToAsk' (Attempt $clarificationAttempts/$maxClarificationAttempts)"
+                                )
+                                conversationHistory = addResponse(
+                                    "model",
+                                    "Clarification needed for task: ${decision.instruction}",
+                                    conversationHistory
+                                )
+                                trackMessage("model", questionToAsk, "clarification")
+                                speakAndThenListen(questionToAsk, false)
                             } else {
                                 Log.d(
                                     "ConvAgent",
-                                    "Max clarification attempts reached ($maxClarificationAttempts). Proceeding with task execution."
+                                    "Task is clear. Executing: ${decision.instruction}"
                                 )
                                 
-                                // Track max clarification attempts reached
-                                firebaseAnalytics.logEvent("task_executed_max_clarification", taskBundle)
+                                // Track task execution
+                                firebaseAnalytics.logEvent("task_executed", taskBundle)
                                 
-                                AgentService.start(applicationContext, decision.instruction)
+                                val originalInstruction = decision.instruction
+                                AgentService.start(applicationContext, originalInstruction)
                                 trackMessage("model", decision.reply, "task_confirmation")
                                 gracefulShutdown(decision.reply, "task_executed")
                             }
-                        }else{
-                            Log.w("ConvAgent", "User has no tasks remaining. Denying request.")
+                        } else {
+                            Log.d(
+                                "ConvAgent",
+                                "Max clarification attempts reached ($maxClarificationAttempts). Proceeding with task execution."
+                            )
                             
-                            // Track freemium limit reached
-                            firebaseAnalytics.logEvent("task_rejected_freemium_limit", null)
+                            // Track max clarification attempts reached
+                            firebaseAnalytics.logEvent("task_executed_max_clarification", taskBundle)
                             
-                            val upgradeMessage = "Hey! You've used all your free tasks for the month. Please upgrade in the app to unlock more. We can still talk in voice mode."
-                            conversationHistory = addResponse("model", upgradeMessage, conversationHistory)
-                            trackMessage("model", upgradeMessage, "freemium_limit")
-                            speakAndThenListen(upgradeMessage)
+                            AgentService.start(applicationContext, decision.instruction)
+                            trackMessage("model", decision.reply, "task_confirmation")
+                            gracefulShutdown(decision.reply, "task_executed")
                         }
+                        
                     }
                     "KillTask" -> {
                         Log.d("ConvAgent", "Model requested to kill the running agent service.")
@@ -710,7 +698,6 @@ class ConversationalAgentService : Service() {
 //
 //        // Here we use the direct REST API call with search that we created previously.
 //        // We need an instance of GeminiApi to call it.
-//        // NOTE: You might need to adjust how you get your GeminiApi instance.
 //        // For now, we'll assume we can create one or access it.
 //        val geminiApi = GeminiApi("gemini-2.5-flash", ApiKeyManager, 2)
 //
@@ -1059,7 +1046,7 @@ class ConversationalAgentService : Service() {
                     // --- (Your existing styling code is perfect, no changes needed here) ---
                     val glowEffect = GradientDrawable(
                         GradientDrawable.Orientation.BL_TR,
-                        intArrayOf("#BE63F3".toColorInt(), "#5880F7".toColorInt())
+                        intArrayOf("#BE63F3".toColorInt(), "#580F7".toColorInt())
                     ).apply { cornerRadius = 32f }
 
                     val glassBackground = GradientDrawable(
@@ -1115,7 +1102,7 @@ class ConversationalAgentService : Service() {
 
                     // Animate the view from its starting position to the calculated finalYPosition
                     val animator = ValueAnimator.ofFloat(0f, 1f).apply {
-                        duration = 500L
+                        duration = 50L
                         startDelay = (index * 150).toLong() // Stagger animation
 
                         addUpdateListener { animation ->
@@ -1165,7 +1152,7 @@ class ConversationalAgentService : Service() {
         firebaseAnalytics.logEvent("conversation_ended_gracefully", shutdownBundle)
         
         // Track conversation end in Firebase
-
+        
         trackConversationEnd(endReason)
         
         visualFeedbackManager.hideTtsWave()

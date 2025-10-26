@@ -24,9 +24,7 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import com.android.billingclient.api.*
 import com.blurr.voice.v2.AgentService
-import com.blurr.voice.utilities.FreemiumManager
 import com.blurr.voice.utilities.Logger
 import com.blurr.voice.utilities.OnboardingManager
 import com.blurr.voice.utilities.PermissionManager
@@ -59,17 +57,14 @@ class MainActivity : BaseNavigationActivity() {
     private lateinit var wakeWordManager: WakeWordManager
     private lateinit var auth: FirebaseAuth
     private lateinit var tasksLeftTag: View
-    private lateinit var freemiumManager: FreemiumManager
     private lateinit var wakeWordHelpLink: TextView
     private lateinit var increaseLimitsLink: TextView
     private lateinit var onboardingManager: OnboardingManager
     private lateinit var requestRoleLauncher: ActivityResultLauncher<Intent>
-    private lateinit var billingStatusTextView: TextView
     private lateinit var statusTextView: TextView
     private lateinit var loadingOverlay: View
     private lateinit var pandaStateManager: PandaStateManager
     private lateinit var stateChangeListener: (PandaState) -> Unit
-    private lateinit var proSubscriptionTag: View
     private lateinit var permissionsTag: View
     private lateinit var permissionsStatusTag: TextView
     private lateinit var tasksLeftText: TextView
@@ -79,7 +74,6 @@ class MainActivity : BaseNavigationActivity() {
     private lateinit var root: View
     companion object {
         const val ACTION_WAKE_WORD_FAILED = "com.blurr.voice.WAKE_WORD_FAILED"
-        const val ACTION_PURCHASE_UPDATED = "com.blurr.voice.PURCHASE_UPDATED"
     }
     
     private val wakeWordFailureReceiver = object : BroadcastReceiver() {
@@ -92,17 +86,6 @@ class MainActivity : BaseNavigationActivity() {
             }
         }
     }
-    
-    private val purchaseUpdateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == ACTION_PURCHASE_UPDATED) {
-                Logger.d("MainActivity", "Received purchase update broadcast.")
-                // Refresh billing status
-                showLoading(true)
-                performBillingCheck()
-            }
-        }
-    }
 
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
@@ -112,7 +95,6 @@ class MainActivity : BaseNavigationActivity() {
                 Toast.makeText(this, "Permission denied.", Toast.LENGTH_SHORT).show()
             }
         }
-
 
 
 
@@ -170,22 +152,17 @@ class MainActivity : BaseNavigationActivity() {
         tasksLeftTag = findViewById(R.id.tasks_left_tag)
         tvPermissionStatus = findViewById(R.id.tv_permission_status)
         wakeWordHelpLink = findViewById(R.id.wakeWordHelpLink)
-        billingStatusTextView = findViewById(R.id.billing_status_textview)
         statusTextView = findViewById(R.id.status_text)
         loadingOverlay = findViewById(R.id.loading_overlay)
-        proSubscriptionTag = findViewById(R.id.pro_subscription_tag)
         permissionsTag = findViewById(R.id.permissions_tag)
         permissionsStatusTag = findViewById(R.id.permissions_status_tag)
         deltaSymbol = findViewById(R.id.delta_symbol)
-        freemiumManager = FreemiumManager()
         updateStatusText(PandaState.IDLE)
-        setupProBanner()
         initializePandaStateManager()
         wakeWordManager = WakeWordManager(this, requestPermissionLauncher)
         handler = Handler(Looper.getMainLooper())
         setupClickListeners()
         showLoading(true)
-        performBillingCheck()
         
         lifecycleScope.launch {
             val videoUrl = "https://storage.googleapis.com/blurr-app-assets/wake_word_demo.mp4"
@@ -244,7 +221,6 @@ class MainActivity : BaseNavigationActivity() {
         }
         
         showLoading(true)
-        performBillingCheck()
     }
 
     private fun handleIntent(intent: Intent?) {
@@ -329,20 +305,6 @@ class MainActivity : BaseNavigationActivity() {
     }
 
 
-    private fun setupProBanner() {
-        val proBanner = findViewById<View>(R.id.pro_upgrade_banner)
-        val upgradeButton = findViewById<TextView>(R.id.upgrade_button)
-        
-        upgradeButton.setOnClickListener {
-            // Navigate to Pro purchase screen (Requirement 2.3)
-            val intent = Intent(this, ProPurchaseActivity::class.java)
-            startActivity(intent)
-        }
-        
-        // Initially hide the banner - it will be shown/hidden based on subscription status
-        proBanner.visibility = View.GONE
-    }
-
     /**
      * Initialize PandaStateManager and set up state change listeners
      */
@@ -374,19 +336,15 @@ class MainActivity : BaseNavigationActivity() {
     override fun onResume() {
         super.onResume()
         showLoading(true)
-        performBillingCheck()
         displayDeveloperMessage()
         updateDeltaVisuals(pandaStateManager.getCurrentState())
         updateUI()
         pandaStateManager.startMonitoring()
         val wakeWordFilter = IntentFilter(ACTION_WAKE_WORD_FAILED)
-        val purchaseFilter = IntentFilter(ACTION_PURCHASE_UPDATED)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(wakeWordFailureReceiver, wakeWordFilter, RECEIVER_NOT_EXPORTED)
-            registerReceiver(purchaseUpdateReceiver, purchaseFilter, RECEIVER_NOT_EXPORTED)
         } else {
             registerReceiver(wakeWordFailureReceiver, wakeWordFilter)
-            registerReceiver(purchaseUpdateReceiver, purchaseFilter)
         }
     }
 
@@ -395,7 +353,6 @@ class MainActivity : BaseNavigationActivity() {
         pandaStateManager.stopMonitoring()
         try {
             unregisterReceiver(wakeWordFailureReceiver)
-            unregisterReceiver(purchaseUpdateReceiver)
         } catch (e: IllegalArgumentException) {
             Logger.d("MainActivity", "Receivers were not registered")
         }
@@ -488,54 +445,7 @@ class MainActivity : BaseNavigationActivity() {
             ContextCompat.getColor(this, R.color.white)
         )
     }
-    private fun updateTaskCounter() {
-        lifecycleScope.launch {
-            val isUserSub = freemiumManager.isUserSubscribed()
-            if(isUserSub){
-                tasksLeftTag.visibility = View.GONE
-            }
-            val tasksLeft = freemiumManager.getTasksRemaining()
-            tasksLeftText.text = "$tasksLeft tasks left"
-        }
-    }
-
-    private fun updateBillingStatus() {
-        lifecycleScope.launch {
-            try {
-                val isSubscribed = freemiumManager.isUserSubscribed()
-                val billingClientReady = MyApplication.isBillingClientReady.value
-                val proBanner = findViewById<View>(R.id.pro_upgrade_banner)
-                if (proBanner == null) {
-                    Logger.w("MainActivity", "pro_banner view not found in updateBillingStatus")
-                    return@launch
-                }
-                when {
-                    !billingClientReady -> {
-                        proSubscriptionTag.visibility = View.GONE
-                        proBanner.visibility = View.VISIBLE
-                    }
-                    isSubscribed -> {
-                        proSubscriptionTag.visibility = View.VISIBLE
-                        proBanner.visibility = View.GONE
-                    }
-                    else -> {
-                        proSubscriptionTag.visibility = View.GONE
-                        proBanner.visibility = View.VISIBLE
-                    }
-                }
-            } catch (e: Exception) {
-                Logger.e("MainActivity", "Error updating billing status", e)
-                proSubscriptionTag.visibility = View.GONE
-                val proBanner = findViewById<View>(R.id.pro_upgrade_banner)
-                if (proBanner != null) {
-                    proBanner.visibility = View.VISIBLE
-                } else {
-                    Logger.w("MainActivity", "pro_banner view not found in error handler")
-                }
-            }
-        }
-    }
-
+    
     @SuppressLint("SetTextI18n")
     private fun updateUI() {
         val allPermissionsGranted = permissionManager.areAllPermissionsGranted()
@@ -570,140 +480,6 @@ class MainActivity : BaseNavigationActivity() {
 
     private fun showLoading(show: Boolean) {
         loadingOverlay.visibility = if (show) View.VISIBLE else View.GONE
-    }
-
-    private fun performBillingCheck() {
-        lifecycleScope.launch {
-            try {
-                waitForBillingClientReady()
-                queryAndHandlePurchases()
-                updateTaskCounter()
-                updateBillingStatus()
-                
-            } catch (e: Exception) {
-                Logger.e("MainActivity", "Error during billing check", e)
-                updateTaskCounter()
-                updateBillingStatus()
-            } finally {
-                showLoading(false)
-            }
-        }
-    }
-
-    private suspend fun waitForBillingClientReady() {
-        return withContext(Dispatchers.IO) {
-            var attempts = 0
-            val maxAttempts = 10
-            
-            while (!MyApplication.isBillingClientReady.value && attempts < maxAttempts) {
-                kotlinx.coroutines.delay(500)
-                attempts++
-            }
-            
-            if (!MyApplication.isBillingClientReady.value) {
-                Logger.w("MainActivity", "Billing client not ready after waiting")
-            }
-        }
-    }
-
-    private suspend fun queryAndHandlePurchases() {
-        return withContext(Dispatchers.IO) {
-            if (!MyApplication.isBillingClientReady.value) {
-                Logger.e("MainActivity", "queryPurchases: BillingClient is not ready")
-                return@withContext
-            }
-
-            try {
-                val params = QueryPurchasesParams.newBuilder()
-                    .setProductType(BillingClient.ProductType.SUBS)
-                    .build()
-                
-                Logger.d("MainActivity", "queryPurchases: BillingClient is ready")
-
-                val purchasesResult = MyApplication.billingClient.queryPurchasesAsync(params)
-                val billingResult = purchasesResult.billingResult
-                
-                Logger.d("MainActivity", "queryPurchases: Got billing result: ${billingResult.responseCode}")
-
-                if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                    Logger.d("MainActivity", "queryPurchases: Found ${purchasesResult.purchasesList.size} purchases")
-                    purchasesResult.purchasesList.forEach { purchase ->
-                        when (purchase.purchaseState) {
-                            Purchase.PurchaseState.PURCHASED -> {
-                                Logger.d("MainActivity", "Found purchased item: ${purchase.products}")
-                                handlePurchase(purchase)
-                            }
-                            Purchase.PurchaseState.PENDING -> {
-                                Logger.d("MainActivity", "Purchase is pending")
-                            }
-                            else -> {
-                                Logger.d("MainActivity", "Purchase is not in a valid state: ${purchase.purchaseState}")
-                            }
-                        }
-                    }
-                } else {
-                    Logger.e("MainActivity", "Failed to query purchases: ${billingResult.debugMessage}")
-                }
-            } catch (e: Exception) {
-                Logger.e("MainActivity", "Exception during purchase query", e)
-            }
-        }
-    }
-
-    private suspend fun handlePurchase(purchase: Purchase) {
-        return withContext(Dispatchers.IO) {
-            try {
-                if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED) {
-                    if (!purchase.isAcknowledged) {
-                        val acknowledgePurchaseParams = AcknowledgePurchaseParams.newBuilder()
-                            .setPurchaseToken(purchase.purchaseToken)
-                            .build()
-                        
-                        MyApplication.billingClient.acknowledgePurchase(acknowledgePurchaseParams) { billingResult ->
-                            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                                Logger.d("MainActivity", "Purchase acknowledged: ${purchase.orderId}")
-                                lifecycleScope.launch {
-                                    updateUserToPro()
-                                }
-                            } else {
-                                Logger.e("MainActivity", "Failed to acknowledge purchase: ${billingResult.debugMessage}")
-                            }
-                        }
-                    } else {
-                        updateUserToPro()
-                    }
-                }
-            } catch (e: Exception) {
-                Logger.e("MainActivity", "Error handling purchase", e)
-            }
-        }
-    }
-
-
-    private suspend fun updateUserToPro() {
-        val uid = Firebase.auth.currentUser?.uid
-        if (uid == null) {
-            Logger.e("MainActivity", "Cannot update user to pro: user is not authenticated.")
-            withContext(Dispatchers.Main) {
-            }
-            return
-        }
-
-        withContext(Dispatchers.IO) {
-            val db = Firebase.firestore
-            try {
-                val userDocRef = db.collection("users").document(uid)
-                userDocRef.update("plan", "pro").await()
-                Logger.d("MainActivity", "Successfully updated user $uid to 'pro' plan.")
-                withContext(Dispatchers.Main) {
-                }
-
-            } catch (e: Exception) {
-                Logger.e("MainActivity", "Error updating user to pro", e)
-                withContext(Dispatchers.Main) {
-                }
-            }
-        }
     }
 
     private fun displayDeveloperMessage() {
@@ -751,38 +527,38 @@ class MainActivity : BaseNavigationActivity() {
                         }
                     }
                 
-//                val db = Firebase.firestore
-//                val docRef = db.collection("settings").document("freemium")
-//
-//                docRef.get().addOnSuccessListener { document ->
-//                    if (document != null && document.exists()) {
-//                        val message = document.getString("developerMessage")
-//                        if (!message.isNullOrEmpty()) {
-//                            val dialog = AlertDialog.Builder(this@MainActivity)
-//                                .setTitle("Message from Developer")
-//                                .setMessage(message)
-//                                .setPositiveButton("OK") { dialogInterface, _ ->
-//                                    dialogInterface.dismiss()
-//                                    // Increment the display count after user dismisses
-//                                    val editor = sharedPrefs.edit()
-//                                    editor.putInt("developer_message_count", displayCount + 1)
-//                                    editor.apply()
-//                                    Logger.d("MainActivity", "Developer message display count updated to ${displayCount + 1}")
-//                                }
-//                                .show()
-//                            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(
-//                                ContextCompat.getColor(this@MainActivity, R.color.black)
-//                            )
-//                            Logger.d("MainActivity", "Developer message displayed in dialog")
-//                        } else {
-//                            Logger.d("MainActivity", "Developer message is empty")
-//                        }
-//                    } else {
-//                        Logger.d("MainActivity", "Developer message document does not exist")
-//                    }
-//                }.addOnFailureListener { exception ->
-//                    Logger.e("MainActivity", "Error fetching developer message", exception)
-//                }
+ //                val db = Firebase.firestore
+ //                val docRef = db.collection("settings").document("freemium")
+ //
+ //                docRef.get().addOnSuccessListener { document ->
+ //                    if (document != null && document.exists()) {
+ //                        val message = document.getString("developerMessage")
+ //                        if (!message.isNullOrEmpty()) {
+ //                            val dialog = AlertDialog.Builder(this@MainActivity)
+ //                                .setTitle("Message from Developer")
+ //                                .setMessage(message)
+ //                                .setPositiveButton("OK") { dialogInterface, _ ->
+ //                                    dialogInterface.dismiss()
+ //                                    // Increment the display count after user dismisses
+ //                                    val editor = sharedPrefs.edit()
+ //                                    editor.putInt("developer_message_count", displayCount + 1)
+ //                                    editor.apply()
+ //                                    Logger.d("MainActivity", "Developer message display count updated to ${displayCount + 1}")
+ //                                }
+ //                                .show()
+ //                            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(
+ //                                ContextCompat.getColor(this@MainActivity, R.color.black)
+ //                            )
+ //                            Logger.d("MainActivity", "Developer message displayed in dialog")
+ //                        } else {
+ //                            Logger.d("MainActivity", "Developer message is empty")
+ //                        }
+ //                    } else {
+ //                        Logger.d("MainActivity", "Developer message document does not exist")
+ //                    }
+ //                }.addOnFailureListener { exception ->
+ //                    Logger.e("MainActivity", "Error fetching developer message", exception)
+ //                }
             } catch (e: Exception) {
                 Logger.e("MainActivity", "Exception in displayDeveloperMessage", e)
             }

@@ -118,19 +118,6 @@ class AgentService : Service() {
             val intent = Intent(context, AgentService::class.java).apply {
                 putExtra(EXTRA_TASK, task)
             }
-            // Decrement freemium task allowance fairly for every started task
-            try {
-                // Launch a lightweight coroutine to decrement without blocking the caller
-                kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                    try {
-                        com.blurr.voice.utilities.FreemiumManager().decrementTaskCount()
-                    } catch (_: Exception) {
-                        // Swallow to avoid crashing start; logging is done within FreemiumManager
-                    }
-                }
-            } catch (_: Exception) {
-                // Defensive: if coroutine infra is unavailable, still proceed to start service
-            }
             context.startService(intent)
         }
     }
@@ -308,7 +295,6 @@ class AgentService : Service() {
 
     /**
      * Tracks the task start in Firebase by appending it to the user's task history array.
-     * This method is inspired by FreemiumManager's Firebase operations.
      */
     private suspend fun trackTaskInFirebase(task: String) {
         val currentUser = auth.currentUser

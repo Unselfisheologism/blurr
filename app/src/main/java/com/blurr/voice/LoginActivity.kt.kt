@@ -15,7 +15,6 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.blurr.voice.utilities.FreemiumManager
 import com.blurr.voice.utilities.OnboardingManager
 import com.blurr.voice.utilities.UserProfileManager
 import com.google.android.gms.auth.api.identity.BeginSignInRequest
@@ -28,7 +27,7 @@ import com.google.firebase.auth.ActionCodeSettings
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.actionCodeSettings
-import com.google.firebase.auth.auth
+import com.google.firebase.auth
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.launch
 
@@ -182,7 +181,7 @@ class LoginActivity : AppCompatActivity() {
         val actionCodeSettings = ActionCodeSettings.newBuilder()
             .setAndroidPackageName(packageName, true, null)
             .setHandleCodeInApp(true)
-            .setUrl("https://black-radius-341415.firebaseapp.com/__/auth/action")
+            .setUrl("https://black-radius-3415.firebaseapp.com/__/auth/action")
             .build()
         Firebase.auth.sendSignInLinkToEmail(email, actionCodeSettings)
             .addOnSuccessListener {
@@ -238,10 +237,6 @@ class LoginActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             val onboardingManager = OnboardingManager(this@LoginActivity)
-            if (isNewUser) {
-                val freemiumManager = FreemiumManager()
-                freemiumManager.provisionUserIfNeeded()
-            }
             if (onboardingManager.isOnboardingCompleted()) {
                 startActivity(Intent(this@LoginActivity, MainActivity::class.java))
             } else {
@@ -284,12 +279,6 @@ class LoginActivity : AppCompatActivity() {
 
                     lifecycleScope.launch {
                         val onboardingManager = OnboardingManager(this@LoginActivity)
-
-                        if (isNewUser) {
-                            Log.d("LoginActivity", "New user detected. Provisioning freemium account.")
-                            val freemiumManager = FreemiumManager()
-                            freemiumManager.provisionUserIfNeeded()
-                        }
 
                         // CHECK THE LOCAL FLAG INSTEAD OF isNewUser
                         if (onboardingManager.isOnboardingCompleted()) {
