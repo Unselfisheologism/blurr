@@ -47,41 +47,11 @@ jobs:
           sed -i 's/\r$//' gradlew
           chmod +x gradlew
 
-      # Check if google-services.json exists and handle accordingly
-      - name: Check for google-services.json
-        run: |
-          if [ -f "app/google-services.json" ]; then
-            echo "Google services file found"
-            echo "GOOGLE_SERVICES_FOUND=true" >> $GITHUB_ENV
-          else
-            echo "Google services file not found - will attempt to build with Firebase dependencies disabled"
-            echo "GOOGLE_SERVICES_FOUND=false" >> $GITHUB_ENV
-          fi
-
-      # If google-services.json is not found, we'll try to build with a modified approach
-      - name: Prepare build configuration
-        run: |
-          if [ "$GOOGLE_SERVICES_FOUND" = "false" ]; then
-            echo "Creating a temporary build configuration without Google Services plugin"
-            # Create a backup of the original file
-            cp app/build.gradle.kts app/build.gradle.kts.bak
-            
-            # Remove or comment out the Google Services plugin line
-            sed -i 's/id("com.google.gms.google-services")/# &/' app/build.gradle.kts
-            sed -i 's/id("com.google.firebase.crashlytics")/# &/' app/build.gradle.kts
-            
-            # Also comment out Firebase dependencies if needed
-            sed -i 's/implementation("com.google.firebase:firebase-analytics")/# &/' app/build.gradle.kts
-            sed -i 's/implementation(libs.firebase.config)/# &/' app/build.gradle.kts
-            sed -i 's/implementation(libs.firebase.auth)/# &/' app/build.gradle.kts
-            sed -i 's/implementation("com.google.firebase:firebase-crashlytics-ndk")/# &/' app/build.gradle.kts
-            sed -i 's/implementation(libs.firebase.firestore)/# &/' app/build.gradle.kts
-          fi
-
       # Clean and compile the apk
       - name: Clean and Generate Debug APK
         run: |
-          ./gradlew clean assembleDebug --warning-mode=all
+          # Build with property to skip Google Services if file is missing
+          ./gradlew clean assembleDebug -PskipGoogleServices=true --warning-mode=all
 
       # Upload the action artifact
       - name: Upload Debug APK (artifact)
@@ -93,15 +63,7 @@ jobs:
       # Generate Release APK (without signing for now)
       - name: Generate Release APK
         run: |
-          ./gradlew clean assembleRelease --warning-mode=all
-
-      # Restore original build file
-      - name: Restore original build file
-        if: env.GOOGLE_SERVICES_FOUND == 'false'
-        run: |
-          if [ -f "app/build.gradle.kts.bak" ]; then
-            mv app/build.gradle.kts.bak app/build.gradle.kts
-          fi
+          ./gradlew clean assembleRelease -PskipGoogleServices=true --warning-mode=all
 
       # Upload Release APK
       - name: Upload Release APK (artifact)

@@ -6,11 +6,16 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.gms.google-services")
     alias(libs.plugins.ksp)
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.10"
-    id("com.google.firebase.crashlytics")
+}
 
+// Conditionally apply Google Services plugin based on a project property
+if (!project.hasProperty("skipGoogleServices") || project.property("skipGoogleServices") != "true") {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+} else {
+    println("Skipping Google Services and Firebase Crashlytics plugins as requested")
 }
 
 val localProperties = Properties()
