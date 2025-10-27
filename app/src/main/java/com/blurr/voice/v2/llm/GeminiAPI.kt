@@ -12,7 +12,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp.http.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
@@ -86,7 +86,9 @@ class GeminiApi(
             "${role}: ${message.parts.filterIsInstance<TextPart>().joinToString(" ") { it.text }}"
         }.joinToString("\n")
         
-        return puterManager.chatWithAI(prompt)
+        // Call Puter.js and handle potential null return
+        val response = puterManager.chatWithAI(prompt)
+        return response ?: "{}" // Return empty JSON object if null
     }
 
     /**
@@ -99,7 +101,8 @@ class GeminiApi(
         val puterManager = PuterManager.getInstance(context)
         
         return try {
-            puterManager.chatWithAI(prompt)
+            val response = puterManager.chatWithAI(prompt)
+            response // Return the response directly, which may be null
         } catch (e: Exception) {
             Log.e(TAG, "Exception during Puter API call", e)
             null

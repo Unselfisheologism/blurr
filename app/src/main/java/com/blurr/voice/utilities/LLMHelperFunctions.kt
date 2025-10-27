@@ -1,7 +1,8 @@
 package com.blurr.voice.utilities
 
+import android.content.Context
 import android.graphics.Bitmap
-import com.blurr.voice.api.LLMApi
+import com.blurr.voice.managers.PuterManager
 
 /**
  * Adds a user or model response to the chat history.
@@ -43,7 +44,14 @@ fun addResponsePrePost(
  * Gets a response from the reasoning model API using Puter.js
  */
 suspend fun getReasoningModelApiResponse(
-    chat: List<Pair<String, List<String>>>
+    chat: List<Pair<String, List<String>>>,
+    context: Context // Add context parameter
 ): String? {
-    return LLMApi.generateContent(chat)
+    // Get the last message from the chat to send to puter.js
+    val lastMessage = chat.lastOrNull()?.second?.lastOrNull() ?: ""
+    val historyContext = chat.dropLast(1).map { (role, parts) -> "$role: ${parts.joinToString(" ")}" }.joinToString("\n")
+    val fullPrompt = if (historyContext.isNotEmpty()) "$historyContext\nuser: $lastMessage" else lastMessage
+    
+    val puterManager = PuterManager.getInstance(context)
+    return puterManager.executePuterChat(fullPrompt) // Changed from LLMApi.generateContent to puterManager method
 }

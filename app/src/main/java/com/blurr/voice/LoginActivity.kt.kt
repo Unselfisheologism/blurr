@@ -90,11 +90,8 @@ class LoginActivity : AppCompatActivity() {
     private fun startPostAuthFlow() {
         lifecycleScope.launch {
             try {
-                val nameFuture = puterManager.getUserName()
-                val emailFuture = puterManager.getUserEmail()
-                
-                val name = nameFuture.await()
-                val email = emailFuture.await()
+                val name = puterManager.getUserName()
+                val email = puterManager.getUserEmail()
                 
                 val profileManager = UserProfileManager(this@LoginActivity)
                 profileManager.saveProfile(name, email)

@@ -345,7 +345,7 @@ class PuterService : Service() {
         authCallback = { token ->
             callback(token != null)
         }
-        
+    
         webView?.post {
             val jsCode = """
                 puterAuthSignIn()

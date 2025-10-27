@@ -22,7 +22,7 @@ class MyApplication : Application() {
         appContext = applicationContext
 
         // Initialize puter.js for remote config functionality
-        PuterManager.initialize(this)
+        PuterManager.getInstance(this)
 
         IntentRegistry.register(DialIntent())
         IntentRegistry.register(ViewUrlIntent())

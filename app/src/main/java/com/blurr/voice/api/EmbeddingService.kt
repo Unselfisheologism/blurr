@@ -1,5 +1,6 @@
 package com.blurr.voice.api
 
+import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.delay
 import okhttp3.MediaType.Companion.toMediaType
@@ -16,7 +17,7 @@ import com.blurr.voice.managers.PuterManager
 /**
  * Service for generating embeddings using Puter.js
  */
-object EmbeddingService {
+class EmbeddingService(private val context: Context) {
     
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -52,7 +53,7 @@ object EmbeddingService {
             
             try {
                 // Use PuterManager to generate embedding
-                val puterManager = PuterManager.getInstance(/* context */)
+                val puterManager = PuterManager.getInstance(context)
                 val embeddingJson = puterManager.chatWithAI("Generate embedding for: $text")
                 
                 if (embeddingJson != null) {
@@ -127,6 +128,17 @@ object EmbeddingService {
         } catch (e: Exception) {
             // Return a dummy embedding for now
             return (0..767).map { 0.1f } // Typical embedding dimension size
+        }
+    }
+    
+    companion object {
+        @Volatile
+        private var INSTANCE: EmbeddingService? = null
+        
+        fun getInstance(context: Context): EmbeddingService {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: EmbeddingService(context.applicationContext).also { INSTANCE = it }
+            }
         }
     }
 }

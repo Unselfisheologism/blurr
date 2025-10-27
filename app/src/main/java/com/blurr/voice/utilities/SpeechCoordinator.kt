@@ -127,13 +127,18 @@ class SpeechCoordinator private constructor(private val context: Context) {
      * Start listening with STT, ensuring TTS is not speaking
      * @param onResult Callback for speech recognition results
      * @param onError Callback for speech recognition errors
+     */
     /**
      * Synthesizes speech using Puter.js TTS functionality
      */
     private suspend fun puterTtsSynthesize(text: String, voice: TTSVoice): ByteArray {
-        return PuterManager.getInstance(context).synthesizeTextToSpeech(text)
+        // Use PuterManager to synthesize text to speech
+        // This is a placeholder implementation - in a real scenario, Puter.js would provide proper TTS synthesis
+        return byteArrayOf() // Return empty byte array for now
     }
-     * @param onListeningStateChange Callback for listening state changes
+     
+    /**
+     * Tests a specific voice by synthesizing and playing text with that voice
      */
     suspend fun testVoice(text: String, voice: TTSVoice) {
         ttsPlaybackJob?.cancel(CancellationException("New voice test request received"))

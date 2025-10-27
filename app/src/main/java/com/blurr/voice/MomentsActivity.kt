@@ -53,13 +53,13 @@ class MomentsActivity : BaseNavigationActivity() {
         
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                // Get task history from puter.js key-value store
-                val taskHistory = puterManager.getTaskHistory()
+                // Get task history from puter.js key-value store - use a method that exists
+                val taskHistory = puterManager.getTaskHistoryFromKvStore()
                 
                 if (taskHistory.isNotEmpty()) {
                     // Sort by startedAt in descending order (most recent first)
-                    val sortedTaskHistory = taskHistory.sortedByDescending { 
-                        it.startedAt ?: 0
+                    val sortedTaskHistory = taskHistory.sortedByDescending { taskItem ->
+                        taskItem.startedAt ?: 0
                     }
                     
                     if (sortedTaskHistory.isNotEmpty()) {

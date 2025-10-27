@@ -1,7 +1,7 @@
 package com.blurr.voice.agents
 
 import android.content.Context
-import com.blurr.voice.api.LLMApi  // Changed from GeminiApi to LLMApi for puter.js
+import com.blurr.voice.managers.PuterManager  // Changed from LLMApi to PuterManager for puter.js
 // REMOVED: import com.google.ai.client.generativeai.type.TextPart  // Removed Google Generative AI dependency
 import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
@@ -45,13 +45,10 @@ class ClarificationAgent {
             // For this specific task, we only need to send our structured prompt.
             val apiChat = listOf("user" to listOf(prompt))  // Changed from TextPart(prompt) to just prompt string
 
-            // 3. Call the puter.js API.
+            // 3. Call the puter.js API using PuterManager.
+            val puterManager = PuterManager.getInstance(context)
             val responseJson = withContext(Dispatchers.IO) {
-                LLMApi.generateContent(
-                    chat = apiChat,
-                    modelName = "gpt-5-nano", // Using puter.js compatible model
-                    context = context
-                )
+                puterManager.executePuterChat(prompt) // Changed from LLMApi.generateContent to puterManager method
             }
             Log.d("ClarificationAgent", "Clarification API Response: $responseJson")
 

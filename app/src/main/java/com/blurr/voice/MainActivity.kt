@@ -23,7 +23,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
-import androidx.lifecycleScope
 import com.blurr.voice.v2.AgentService
 import com.blurr.voice.utilities.Logger
 import com.blurr.voice.utilities.OnboardingManager
@@ -37,6 +36,7 @@ import com.blurr.voice.utilities.PandaStateManager
 import com.blurr.voice.utilities.DeltaStateColorMapper
 import com.blurr.voice.views.DeltaSymbolView
 import com.blurr.voice.managers.PuterManager
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -65,6 +65,7 @@ class MainActivity : BaseNavigationActivity() {
     private lateinit var tasksLeftText: TextView
     private lateinit var deltaSymbol: DeltaSymbolView
 
+    private val mainScope = CoroutineScope(Dispatchers.Main)
 
     private lateinit var root: View
     companion object {
@@ -159,7 +160,7 @@ class MainActivity : BaseNavigationActivity() {
         setupClickListeners()
         showLoading(true)
         
-        lifecycleScope.launch {
+        mainScope.launch {
             val videoUrl = "https://storage.googleapis.com/blurr-app-assets/wake_word_demo.mp4"
             VideoAssetManager.getVideoFile(this@MainActivity, videoUrl)
         }
@@ -416,7 +417,7 @@ class MainActivity : BaseNavigationActivity() {
                 dialog.dismiss()
             }
         val alertDialog = builder.create()
-        lifecycleScope.launch {
+        mainScope.launch {
             val videoUrl = "https://storage.googleapis.com/blurr-app-assets/wake_word_demo.mp4"
             val videoFile: File? = VideoAssetManager.getVideoFile(this@MainActivity, videoUrl)
 
@@ -478,7 +479,7 @@ class MainActivity : BaseNavigationActivity() {
     }
 
     private fun displayDeveloperMessage() {
-        //lifecycleScope.launch {
+        //mainScope.launch {
             try {
                 // Check if message has been shown more than once
                 val sharedPrefs = getSharedPreferences("developer_message_prefs", Context.MODE_PRIVATE)

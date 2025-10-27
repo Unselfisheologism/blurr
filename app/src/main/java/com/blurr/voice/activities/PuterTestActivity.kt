@@ -19,8 +19,8 @@ class PuterTestActivity : AppCompatActivity() {
         setContentView(R.layout.activity_puter_demo) // Using the existing layout
 
         puterManager = PuterManager.getInstance(this)
-        resultTextView = findViewById(R.id.resultText) // Assuming there's a result text in the layout
-        val testButton = findViewById<Button>(R.id.testButton) // Assuming there's a button in the layout
+        resultTextView = findViewById(R.id.result_text) // Changed from resultText to result_text to match the layout
+        val testButton = findViewById<Button>(R.id.chat_button) // Changed to use existing button in layout (chat_button)
 
         testButton.text = "Test KV Operations"
         testButton.setOnClickListener {

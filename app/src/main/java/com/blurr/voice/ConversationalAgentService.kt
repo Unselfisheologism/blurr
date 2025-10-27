@@ -528,7 +528,7 @@ class ConversationalAgentService : Service() {
                 pandaStateManager.setState(PandaState.PROCESSING)
                 visualFeedbackManager.showThinkingIndicator()
                 val defaultJsonResponse = """{"Type": "Reply", "Reply": "I'm sorry, I had an issue.", "Instruction": "", "Should End": "Continue"}"""
-                val rawModelResponse = getReasoningModelApiResponse(conversationHistory) ?: defaultJsonResponse
+                val rawModelResponse = getReasoningModelApiResponse(conversationHistory, this@ConversationalAgentService) ?: defaultJsonResponse
                 visualFeedbackManager.hideThinkingIndicator()
                 val decision = parseModelResponse(rawModelResponse)
                 Log.d("TTS_DEBUG", "Reply received from Puter.js: -->${rawModelResponse}<--")
@@ -1218,7 +1218,7 @@ class ConversationalAgentService : Service() {
         serviceScope.launch {
             try {
                 val conversationEntry = mapOf(
-                    "conversationId" to conversationId,
+                    "conversationId" to conversationId!!,
                     "startedAt" to System.currentTimeMillis().toString(),
                     "endedAt" to null,
                     "messageCount" to "0",
@@ -1231,7 +1231,7 @@ class ConversationalAgentService : Service() {
                 )
 
                 // Save the conversation to puter.js key-value store
-                val conversationKey = "conversation_${conversationId}"
+                val conversationKey = "conversation_${conversationId!!}"
                 puterManager.saveConversationToKvStore(conversationKey, conversationEntry)
 
                 Log.d("ConvAgent", "Successfully tracked conversation start in puter.js for user ${puterManager.getUserId()}: $conversationId")
@@ -1266,7 +1266,7 @@ class ConversationalAgentService : Service() {
                 }
                 
                 val messageEntry = mapOf(
-                    "conversationId" to conversationId,
+                    "conversationId" to conversationId!!,
                     "role" to role, // "user" or "model"
                     "message" to actualContent.take(500), // Limit message length for storage
                     "messageType" to messageType, // "text", "task", "clarification"
@@ -1285,36 +1285,6 @@ class ConversationalAgentService : Service() {
         }
     }
 
-
-
-
-    private fun trackMessage(role: String, messageType: String = "text") {
-        if (!puterManager.isUserSignedIn() || conversationId == null) {
-            return
-        }
-
-        serviceScope.launch {
-            try {
-                val messageEntry = mapOf(
-                    "conversationId" to conversationId,
-                    "role" to role, // "user" or "model"
-                    "message" to message.take(500), // Limit message length for storage
-                    "messageType" to messageType, // "text", "task", "clarification"
-                    "timestamp" to System.currentTimeMillis().toString(),
-                    "inputMode" to if (isTextModeActive) "text" else "voice"
-                )
-
-                // Save the message to puter.js key-value store
-                val messageKey = "message_${System.currentTimeMillis()}"
-                puterManager.saveMessageToKvStore(messageKey, messageEntry)
-
-                Log.d("ConvAgent", "Successfully tracked message in puter.js: $role - ${message.take(50)}...")
-            } catch (e: Exception) {
-                Log.e("ConvAgent", "Failed to track message in puter.js", e)
-            }
-        }
-    }
-
     /**
      * Updates the conversation completion status in puter.js.
      * Fire and forget operation.
@@ -1327,7 +1297,7 @@ class ConversationalAgentService : Service() {
         serviceScope.launch {
             try {
                 val completionEntry = mapOf(
-                    "conversationId" to conversationId,
+                    "conversationId" to conversationId!!,
                     "endedAt" to System.currentTimeMillis().toString(),
                     "messageCount" to conversationHistory.size.toString(),
                     "textModeUsed" to isTextModeActive.toString(),
@@ -1340,7 +1310,7 @@ class ConversationalAgentService : Service() {
                 )
 
                 // Save the completion status to puter.js key-value store
-                val completionKey = "completion_${conversationId}"
+                val completionKey = "completion_${conversationId!!}"
                 puterManager.saveConversationToKvStore(completionKey, completionEntry)
 
                 Log.d("ConvAgent", "Successfully tracked conversation end in puter.js: $conversationId ($endReason)")
