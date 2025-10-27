@@ -33,13 +33,14 @@ import androidx.core.graphics.toColorInt
 import com.blurr.voice.agents.ClarificationAgent
 import com.blurr.voice.utilities.TTSManager
 import com.blurr.voice.utilities.addResponse
+import com.blurr.voice.utilities.PandaState
 import com.blurr.voice.utilities.getReasoningModelApiResponse
 import com.blurr.voice.data.MemoryManager
 import com.blurr.voice.utilities.PandaState
 import com.blurr.voice.utilities.UserProfileManager
 import com.blurr.voice.utilities.VisualFeedbackManager
 import com.blurr.voice.v2.AgentService
-import com.google.ai.client.generativeai.type.TextPart
+// // import com.google.ai.client.generativeai.type.TextPart  // REMOVED: No longer needed with Puter.js
 import com.blurr.voice.managers.PuterManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,7 +62,7 @@ class ConversationalAgentService : Service() {
 
     private val speechCoordinator by lazy { SpeechCoordinator.getInstance(this) }
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var conversationHistory = listOf<Pair<String, List<Any>>>()
+    private var conversationHistory = listOf<Pair<String, List<String>>>()  // MODIFIED: Changed from List<Any> to List<String> for Puter.js compatibility
     private val ttsManager by lazy { TTSManager.getInstance(this) }
     private val clarificationQuestionViews = mutableListOf<View>()
     private var transcriptionView: TextView? = null
@@ -504,7 +505,7 @@ class ConversationalAgentService : Service() {
                 }
             }
 
-            conversationHistory = addResponse("user", userInput, conversationHistory)
+            conversationHistory = addResponse("user", userInput, conversationHistory as List<Pair<String, List<String>>>)
             
             // Track user message in puter.js
             trackMessage("user", userInput, "input")
@@ -544,13 +545,13 @@ class ConversationalAgentService : Service() {
                             puterManager.trackEvent("task_rejected_agent_busy")
                             val busyMessage = "I'm already working on '${AgentService.currentTask}'. Please let me finish that first, or you can ask me to stop it."
                             speakAndThenListen(busyMessage)
-                            conversationHistory = addResponse("model", busyMessage, conversationHistory)
+                            conversationHistory = addResponse("model", busyMessage, conversationHistory as List<Pair<String, List<String>>>)
                             return@launch
                         }
 
                         if (!servicePermissionManager.isAccessibilityServiceEnabled()) {
                             speakAndThenListen(getString(R.string.accessibility_permission_needed_for_task))
-                            conversationHistory = addResponse("model", R.string.accessibility_permission_needed_for_task.toString(), conversationHistory)
+                            conversationHistory = addResponse("model", R.string.accessibility_permission_needed_for_task.toString(), conversationHistory as List<Pair<String, List<String>>>)
                             return@launch
                         }
 
@@ -586,7 +587,7 @@ class ConversationalAgentService : Service() {
                                 conversationHistory = addResponse(
                                     "model",
                                     "Clarification needed for task: ${decision.instruction}",
-                                    conversationHistory
+                                    conversationHistory as List<Pair<String, List<String>>>
                                 )
                                 trackMessage("model", questionToAsk, "clarification")
                                 speakAndThenListen(questionToAsk, false)
@@ -652,7 +653,7 @@ class ConversationalAgentService : Service() {
                             trackMessage("model", decision.reply, "farewell")
                             gracefulShutdown(decision.reply, "model_ended")
                         } else {
-                            conversationHistory = addResponse("model", rawModelResponse, conversationHistory)
+                            conversationHistory = addResponse("model", rawModelResponse, conversationHistory as List<Pair<String, List<String>>>)
                             trackMessage("model", decision.reply, "reply")
                             speakAndThenListen(decision.reply)
                         }
@@ -782,7 +783,7 @@ class ConversationalAgentService : Service() {
 
     private fun updateSystemPromptWithAgentStatus() {
         val currentPromptText = conversationHistory.firstOrNull()?.second
-            ?.filterIsInstance<TextPart>()?.firstOrNull()?.text ?: return
+            ?.firstOrNull() ?: return
 
         val agentStatusContext = if (AgentService.isRunning) {
             """
@@ -798,7 +799,7 @@ class ConversationalAgentService : Service() {
 
         // Replace the first system message with the updated prompt
         conversationHistory = conversationHistory.toMutableList().apply {
-            set(0, "user" to listOf(TextPart(updatedPromptText)))
+            set(0, "user" to listOf(updatedPromptText))
         }
         Log.d("ConvAgent", "System prompt updated with agent status: ${AgentService.isRunning}")
     }
@@ -853,8 +854,7 @@ class ConversationalAgentService : Service() {
             
             // Get current prompt
             val currentPrompt = conversationHistory.first().second
-                .filterIsInstance<TextPart>()
-                .firstOrNull()?.text ?: ""
+                .firstOrNull() ?: ""
 
             // Update screen context first
             var updatedPrompt = currentPrompt.replace("{screen_context}", screenContext)
@@ -867,8 +867,7 @@ class ConversationalAgentService : Service() {
             } else {
                 // Get the last user message to search for relevant memories
                 val lastUserMessage = conversationHistory.lastOrNull { it.first == "user" }
-                    ?.second?.filterIsInstance<TextPart>()
-                    ?.joinToString(" ") { it.text } ?: ""
+                    ?.second?.joinToString(" ") { it } ?: ""
 
                 if (lastUserMessage.isNotEmpty()) {
                     Log.d("ConvAgent", "Searching for memories relevant to: ${lastUserMessage.take(100)}...")
@@ -919,7 +918,7 @@ class ConversationalAgentService : Service() {
             if (updatedPrompt.isNotEmpty()) {
                 // Replace the first system message with updated prompt
                 conversationHistory = conversationHistory.toMutableList().apply {
-                    set(0, "user" to listOf(TextPart(updatedPrompt)))
+                    set(0, "user" to listOf(updatedPrompt))
                 }
                 Log.d("ConvAgent", "Updated system prompt with screen context and memories")
             }
