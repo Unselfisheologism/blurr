@@ -374,7 +374,6 @@ class ConversationalAgentService : Service() {
                 }
                 
                 processUserInput(recognizedText)
-
             },
             onError = { error ->
                 Log.e("ConvAgent", "STT Error: $error")
@@ -850,7 +849,7 @@ class ConversationalAgentService : Service() {
             // Get current screen context
             val screenContext = getScreenContext()
             Log.d("ConvAgent", "Retrieved screen context: ${screenContext.take(200)}...")
-            
+
             // Get current prompt
             val currentPrompt = conversationHistory.first().second
                 .firstOrNull() ?: ""
@@ -1245,7 +1244,7 @@ class ConversationalAgentService : Service() {
      * Tracks individual messages in the conversation.
      * Fire and forget operation.
      */
-    private fun trackMessage(role: String, message: String, messageType: String = "text") {
+    private fun trackMessage(role: String, messageType: String = "text") {
         if (!puterManager.isUserSignedIn() || conversationId == null) {
             return
         }

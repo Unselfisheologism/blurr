@@ -398,6 +398,8 @@ class PuterService : Service() {
             
             webView?.evaluateJavascript(jsCode, null)
         }
+    }
+    
     fun executePuterChatStream(query: String, onChunkCallback: (String) -> Unit, callback: (String?) -> Unit) {
         webView?.post {
             val jsCode = """
@@ -620,7 +622,6 @@ class PuterService : Service() {
             
             webView?.evaluateJavascript(jsCode, null)
         }
-    }
     }
 
     inner class AndroidInterface {

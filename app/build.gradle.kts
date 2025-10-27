@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.2.10"
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.1.0"
 }
 
 val localProperties = Properties()
@@ -45,6 +45,7 @@ android {
         
         
         
+
         
         buildConfigField("boolean", "ENABLE_LOGGING", "true")
 
