@@ -34,6 +34,8 @@ import com.blurr.voice.agents.ClarificationAgent
 import com.blurr.voice.utilities.TTSManager
 import com.blurr.voice.utilities.addResponse
 import com.blurr.voice.utilities.PandaState
+import com.blurr.voice.utilities.PandaStateManager
+import com.blurr.voice.utilities.ServicePermissionManager
 import com.blurr.voice.utilities.getReasoningModelApiResponse
 import com.blurr.voice.data.MemoryManager
 import com.blurr.voice.utilities.UserProfileManager
@@ -301,7 +303,7 @@ class ConversationalAgentService : Service() {
                     if (sttErrorAttempts >= maxSttErrorAttempts) {
                         puterManager.trackEvent("conversation_ended_stt_errors")
                         val exitMessage = "I'm having trouble understanding you clearly. Please try calling later!"
-                        trackMessage("model", exitMessage, "error_message")
+                        trackMessage("model", "error_message", exitMessage)
                         gracefulShutdown(exitMessage, "stt_errors")
                     } else {
                         val retryMessage = "I'm sorry, I didn't catch that. Could you please repeat?"
@@ -396,7 +398,7 @@ class ConversationalAgentService : Service() {
                     if (sttErrorAttempts >= maxSttErrorAttempts) {
                         puterManager.trackEvent("conversation_ended_stt_errors")
                         val exitMessage = "I'm having trouble understanding you clearly. Please try calling later!"
-                        trackMessage("model", exitMessage, "error_message")
+                        trackMessage("model", "error_message", exitMessage)
                         gracefulShutdown(exitMessage, "stt_errors")
                     } else {
                         speakAndThenListen("I'm sorry, I didn't catch that. Could you please repeat?")
@@ -506,7 +508,7 @@ class ConversationalAgentService : Service() {
             conversationHistory = addResponse("user", userInput, conversationHistory as List<Pair<String, List<String>>>)
             
             // Track user message in puter.js
-            trackMessage("user", userInput, "input")
+            trackMessage("user", "input", userInput)
 
             // Track user input
             val inputBundle = mapOf(
@@ -519,7 +521,7 @@ class ConversationalAgentService : Service() {
             try {
                 if (userInput.equals("stop", ignoreCase = true) || userInput.equals("exit", ignoreCase = true)) {
                     puterManager.trackEvent("conversation_ended_by_command")
-                    trackMessage("model", "Goodbye!", "farewell")
+                    trackMessage("model", "farewell", "Goodbye!")
                     gracefulShutdown("Goodbye!", "command")
                     return@launch
                 }
@@ -529,7 +531,7 @@ class ConversationalAgentService : Service() {
                 val rawModelResponse = getReasoningModelApiResponse(conversationHistory) ?: defaultJsonResponse
                 visualFeedbackManager.hideThinkingIndicator()
                 val decision = parseModelResponse(rawModelResponse)
-                Log.d("TTS_DEBUG", "Reply received from GeminiApi: -->${rawModelResponse}<--")
+                Log.d("TTS_DEBUG", "Reply received from Puter.js: -->${rawModelResponse}<--")
                 when (decision.type) {
                     "Task" -> {
                         // Track task request
@@ -587,7 +589,7 @@ class ConversationalAgentService : Service() {
                                     "Clarification needed for task: ${decision.instruction}",
                                     conversationHistory as List<Pair<String, List<String>>>
                                 )
-                                trackMessage("model", questionToAsk, "clarification")
+                                trackMessage("model", "clarification", questionToAsk)
                                 speakAndThenListen(questionToAsk, false)
                             } else {
                                 Log.d(
@@ -600,7 +602,7 @@ class ConversationalAgentService : Service() {
                                 
                                 val originalInstruction = decision.instruction
                                 AgentService.start(applicationContext, originalInstruction)
-                                trackMessage("model", decision.reply, "task_confirmation")
+                                trackMessage("model", "task_confirmation", decision.reply)
                                 gracefulShutdown(decision.reply, "task_executed")
                             }
                         } else {
@@ -613,7 +615,7 @@ class ConversationalAgentService : Service() {
                             puterManager.trackEvent("task_executed_max_clarification", taskBundle)
                             
                             AgentService.start(applicationContext, decision.instruction)
-                            trackMessage("model", decision.reply, "task_confirmation")
+                            trackMessage("model", "task_confirmation", decision.reply)
                             gracefulShutdown(decision.reply, "task_executed")
                         }
                         
@@ -629,11 +631,11 @@ class ConversationalAgentService : Service() {
                         
                         if (AgentService.isRunning) {
                             AgentService.stop(applicationContext)
-                            trackMessage("model", decision.reply, "kill_task_response")
+                            trackMessage("model", "kill_task_response", decision.reply)
                             gracefulShutdown(decision.reply, "task_killed")
                         } else {
                             val noTaskMessage = "There was no automation running, but I can help with something else."
-                            trackMessage("model", noTaskMessage, "kill_task_response")
+                            trackMessage("model", "kill_task_response", decision.reply)
                             speakAndThenListen(noTaskMessage)
                         }
                     }
@@ -648,11 +650,11 @@ class ConversationalAgentService : Service() {
                         if (decision.shouldEnd) {
                             Log.d("ConvAgent", "Model decided to end the conversation.")
                             puterManager.trackEvent("conversation_ended_by_model")
-                            trackMessage("model", decision.reply, "farewell")
+                            trackMessage("model", "farewell", "Goodbye!")
                             gracefulShutdown(decision.reply, "model_ended")
                         } else {
                             conversationHistory = addResponse("model", rawModelResponse, conversationHistory as List<Pair<String, List<String>>>)
-                            trackMessage("model", decision.reply, "reply")
+                            trackMessage("model", "reply", decision.reply)
                             speakAndThenListen(decision.reply)
                         }
                     }
@@ -1244,6 +1246,48 @@ class ConversationalAgentService : Service() {
      * Tracks individual messages in the conversation.
      * Fire and forget operation.
      */
+    private fun trackMessage(role: String, messageType: String = "text", content: String = "") {
+        if (!puterManager.isUserSignedIn() || conversationId == null) {
+            return
+        }
+
+        serviceScope.launch {
+            try {
+                val actualContent = if (content.isNotEmpty()) {
+                    content
+                } else {
+                    // Get the most recent message from conversation history based on role
+                    val recentEntry = if (role == "user") {
+                        conversationHistory.lastOrNull { it.first == "user" }
+                    } else {
+                        conversationHistory.lastOrNull { it.first == "model" }
+                    }
+                    recentEntry?.second?.lastOrNull() ?: ""
+                }
+                
+                val messageEntry = mapOf(
+                    "conversationId" to conversationId,
+                    "role" to role, // "user" or "model"
+                    "message" to actualContent.take(500), // Limit message length for storage
+                    "messageType" to messageType, // "text", "task", "clarification"
+                    "timestamp" to System.currentTimeMillis().toString(),
+                    "inputMode" to if (isTextModeActive) "text" else "voice"
+                )
+
+                // Save the message to puter.js key-value store
+                val messageKey = "message_${System.currentTimeMillis()}"
+                puterManager.saveMessageToKvStore(messageKey, messageEntry)
+
+                Log.d("ConvAgent", "Successfully tracked message in puter.js: $role - ${actualContent.take(50)}...")
+            } catch (e: Exception) {
+                Log.e("ConvAgent", "Failed to track message in puter.js", e)
+            }
+        }
+    }
+
+
+
+
     private fun trackMessage(role: String, messageType: String = "text") {
         if (!puterManager.isUserSignedIn() || conversationId == null) {
             return

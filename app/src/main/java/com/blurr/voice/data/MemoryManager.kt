@@ -2,17 +2,16 @@ package com.blurr.voice.data
 
 import android.content.Context
 import android.util.Log
-import com.blurr.voice.api.EmbeddingService
 import com.blurr.voice.MyApplication
+import com.blurr.voice.managers.PuterManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 
 /**
- * Manager class for handling memory operations with embeddings
+ * Manager class for handling memory operations with puter.js
  */
 class MemoryManager(private val context: Context) {
     
@@ -21,7 +20,7 @@ class MemoryManager(private val context: Context) {
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     /**
-     * Add a new memory with embedding, checking for duplicates first
+     * Add a new memory, checking for duplicates first
      */
     suspend fun addMemory(originalText: String, checkDuplicates: Boolean = true): Boolean {
         return withContext(Dispatchers.IO) {
@@ -37,29 +36,27 @@ class MemoryManager(private val context: Context) {
                     }
                 }
                 
-                // Generate embedding for the text
-                val embedding = EmbeddingService.generateEmbedding(
-                    text = originalText,
-                    taskType = "RETRIEVAL_DOCUMENT"
-                )
-                
-                if (embedding == null) {
-                    Log.e("MemoryManager", "Failed to generate embedding for text")
-                    return@withContext false
-                }
-                
-                // Convert embedding to JSON string for storage
-                val embeddingJson = JSONArray(embedding).toString()
-                
-                // Create memory entity
+                // Create memory entity without embedding for puter.js compatibility
                 val memory = Memory(
                     originalText = originalText,
-                    embedding = embeddingJson
+                    embedding = "[]" // Empty embedding array as placeholder
                 )
                 
                 // Save to database
                 val id = memoryDao.insertMemory(memory)
                 Log.d("MemoryManager", "Successfully added memory with ID: $id")
+                
+                // Save to puter.js key-value store if user is signed in
+                if (PuterManager.getInstance(context).isUserSignedIn()) {
+                    val memoryKey = "memory_${System.currentTimeMillis()}"
+                    val memoryData = mapOf(
+                        "originalText" to originalText,
+                        "timestamp" to System.currentTimeMillis().toString(),
+                        "id" to id.toString()
+                    )
+                    PuterManager.getInstance(context).saveMessageToKvStore(memoryKey, memoryData)
+                }
+                
                 return@withContext true
                 
             } catch (e: Exception) {
@@ -92,17 +89,6 @@ class MemoryManager(private val context: Context) {
             try {
                 Log.d("MemoryManager", "Searching memories for query: ${query.take(100)}...")
                 
-                // Generate embedding for the query
-                val queryEmbedding = EmbeddingService.generateEmbedding(
-                    text = query,
-                    taskType = "RETRIEVAL_QUERY"
-                )
-                
-                if (queryEmbedding == null) {
-                    Log.e("MemoryManager", "Failed to generate embedding for query")
-                    return@withContext emptyList()
-                }
-                
                 // Get all memories from database
                 val allMemories = memoryDao.getAllMemoriesList()
                 
@@ -111,10 +97,9 @@ class MemoryManager(private val context: Context) {
                     return@withContext emptyList()
                 }
                 
-                // Calculate similarities and find top matches
+                // Simple text-based similarity (substring matching) instead of embeddings
                 val similarities = allMemories.map { memory ->
-                    val memoryEmbedding = parseEmbeddingFromJson(memory.embedding)
-                    val similarity = calculateCosineSimilarity(queryEmbedding, memoryEmbedding)
+                    val similarity = calculateTextSimilarity(query.lowercase(), memory.originalText.lowercase())
                     Pair(memory.originalText, similarity)
                 }.sortedByDescending { it.second }
                 
@@ -202,17 +187,6 @@ class MemoryManager(private val context: Context) {
     suspend fun findSimilarMemories(text: String, similarityThreshold: Float = 0.8f): List<String> {
         return withContext(Dispatchers.IO) {
             try {
-                // Generate embedding for the query text
-                val queryEmbedding = EmbeddingService.generateEmbedding(
-                    text = text,
-                    taskType = "RETRIEVAL_QUERY"
-                )
-                
-                if (queryEmbedding == null) {
-                    Log.e("MemoryManager", "Failed to generate embedding for similarity check")
-                    return@withContext emptyList()
-                }
-                
                 // Get all memories from database
                 val allMemories = memoryDao.getAllMemoriesList()
                 
@@ -220,10 +194,9 @@ class MemoryManager(private val context: Context) {
                     return@withContext emptyList()
                 }
                 
-                // Calculate similarities and find similar memories
+                // Calculate similarities and find similar memories using simple text matching
                 val similarMemories = allMemories.mapNotNull { memory ->
-                    val memoryEmbedding = parseEmbeddingFromJson(memory.embedding)
-                    val similarity = calculateCosineSimilarity(queryEmbedding, memoryEmbedding)
+                    val similarity = calculateTextSimilarity(text.lowercase(), memory.originalText.lowercase())
                     
                     if (similarity >= similarityThreshold) {
                         Log.d("MemoryManager", "Found similar memory (similarity: $similarity): ${memory.originalText.take(50)}...")
@@ -244,41 +217,23 @@ class MemoryManager(private val context: Context) {
     }
     
     /**
-     * Parse embedding from JSON string
+     * Calculate simple text similarity using common substring approach
      */
-    private fun parseEmbeddingFromJson(embeddingJson: String): List<Float> {
-        return try {
-            val jsonArray = JSONArray(embeddingJson)
-            (0 until jsonArray.length()).map { i ->
-                jsonArray.getDouble(i).toFloat()
-            }
-        } catch (e: Exception) {
-            Log.e("MemoryManager", "Error parsing embedding JSON", e)
-            emptyList()
-        }
-    }
-    
-    /**
-     * Calculate cosine similarity between two vectors
-     */
-    private fun calculateCosineSimilarity(vector1: List<Float>, vector2: List<Float>): Float {
-        if (vector1.size != vector2.size) {
-            Log.w("MemoryManager", "Vector dimensions don't match: ${vector1.size} vs ${vector2.size}")
-            return 0f
-        }
+    private fun calculateTextSimilarity(text1: String, text2: String): Float {
+        if (text1.isEmpty() && text2.isEmpty()) return 1.0f
+        if (text1.isEmpty() || text2.isEmpty()) return 0.0f
         
-        var dotProduct = 0f
-        var norm1 = 0f
-        var norm2 = 0f
+        // Simple approach: calculate similarity based on common words
+        val words1 = text1.split("\\s+".toRegex()).filter { it.isNotEmpty() }
+        val words2 = text2.split("\\s+".toRegex()).filter { it.isNotEmpty() }
         
-        for (i in vector1.indices) {
-            dotProduct += vector1[i] * vector2[i]
-            norm1 += vector1[i] * vector1[i]
-            norm2 += vector2[i] * vector2[i]
-        }
+        if (words1.isEmpty() && words2.isEmpty()) return 1.0f
+        if (words1.isEmpty() || words2.isEmpty()) return 0.0f
         
-        val denominator = kotlin.math.sqrt(norm1) * kotlin.math.sqrt(norm2)
-        return if (denominator > 0) dotProduct / denominator else 0f
+        val commonWords = words1.intersect(words2.toSet()).size
+        val totalWords = maxOf(words1.size, words2.size)
+        
+        return if (totalWords > 0) commonWords.toFloat() / totalWords else 0.0f
     }
     
     companion object {
@@ -290,4 +245,4 @@ class MemoryManager(private val context: Context) {
             }
         }
     }
-} 
+}
