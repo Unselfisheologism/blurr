@@ -52,19 +52,19 @@ class LoginActivity : AppCompatActivity() {
         Log.d("LoginActivity", "Starting email sign-in with puter.js: $email")
 
         // Use puter.js email sign-in functionality
-        puterManager.signIn { success ->
-            runOnUiThread {
-                progressBar.visibility = View.GONE
-                loadingText.visibility = View.GONE
-                emailSendLinkButton.isEnabled = true
+        puterManager.signIn()
+        runOnUiThread {
+            progressBar.visibility = View.GONE
+            loadingText.visibility = View.GONE
+            emailSendLinkButton.isEnabled = true
 
-                if (success) {
-                    Log.d("LoginActivity", "Puter.js email sign-in successful")
-                    startPostAuthFlow()
-                } else {
-                    Log.w("LoginActivity", "Puter.js email sign-in failed")
-                    Toast.makeText(this, "Authentication Failed.", Toast.LENGTH_SHORT).show()
-                }
+            // Check if sign in was successful
+            if (puterManager.isUserSignedIn()) {
+                Log.d("LoginActivity", "Puter.js email sign-in successful")
+                startPostAuthFlow()
+            } else {
+                Log.w("LoginActivity", "Puter.js email sign-in failed")
+                Toast.makeText(this, "Authentication Failed.", Toast.LENGTH_SHORT).show()
             }
         }
     }

@@ -2,7 +2,7 @@ package com.blurr.voice.data
 
 import android.util.Log
 //import com.blurr.voice.api.GeminiApi
-import com.google.ai.client.generativeai.type.TextPart
+// REMOVED: import com.google.ai.client.generativeai.type.TextPart  // Removed Google Generative AI dependency
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

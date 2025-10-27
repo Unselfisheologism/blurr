@@ -28,7 +28,7 @@ jobs:
       - name: Setup JDK
         uses: actions/setup-java@v3
         with:
-          java-version: '17'  # Using Java 17 instead of Java 25 to avoid compatibility issues
+          java-version: '17'  # Using Java 17 to ensure compatibility
           distribution: 'temurin'
           cache: gradle
 
@@ -36,22 +36,16 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
-      # Clean up any backup files that might interfere with the build
-      - name: Clean up backup files
+      # Make gradlew executable and fix line endings
+      - name: Fix gradlew permissions and line endings
         run: |
-          # Remove any backup files that might interfere with the build
-          find . -name "*.bak" -type f -delete || true
-          find . -name "*~" -type f -delete || true
-          
-          # Fix any existing gradlew file to ensure proper Unix line endings
-          sed -i 's/\r$//' gradlew
-          chmod +x gradlew
+          chmod +x ./gradlew
+          dos2unix ./gradlew || true
 
       # Clean and compile the apk
       - name: Clean and Generate Debug APK
         run: |
-          # Build with property to skip Google Services if file is missing
-          ./gradlew clean assembleDebug -PskipGoogleServices=true --warning-mode=all
+          ./gradlew clean assembleDebug --warning-mode=all --stacktrace
 
       # Upload the action artifact
       - name: Upload Debug APK (artifact)
@@ -60,10 +54,10 @@ jobs:
           name: debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
 
-      # Generate Release APK (without signing for now)
+      # Generate Release APK
       - name: Generate Release APK
         run: |
-          ./gradlew clean assembleRelease -PskipGoogleServices=true --warning-mode=all
+          ./gradlew clean assembleRelease --warning-mode=all --stacktrace
 
       # Upload Release APK
       - name: Upload Release APK (artifact)

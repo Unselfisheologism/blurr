@@ -23,7 +23,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycleScope
 import com.blurr.voice.v2.AgentService
 import com.blurr.voice.utilities.Logger
 import com.blurr.voice.utilities.OnboardingManager
@@ -98,10 +98,10 @@ class MainActivity : BaseNavigationActivity() {
         super.onCreate(savedInstanceState)
 
         puterManager = PuterManager.getInstance(this)
-        val currentUser = puterManager.getCurrentUser()
+        val isUserSignedIn = puterManager.isUserSignedIn()
         val profileManager = UserProfileManager(this)
 
-        if (currentUser == null || !profileManager.isProfileComplete()) {
+        if (!isUserSignedIn || !profileManager.isProfileComplete()) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
@@ -491,7 +491,7 @@ class MainActivity : BaseNavigationActivity() {
 
                 // For puter.js, we'll fetch the message differently
                 // This is a placeholder implementation - puter.js remote config would work differently
-                val message = puterManager.getDeveloperMessage()
+                val message = "Welcome to the new version of Panda! We've added several new features and improvements."
                 
                 if (!message.isNullOrEmpty()) {
                     // Your existing dialog logic

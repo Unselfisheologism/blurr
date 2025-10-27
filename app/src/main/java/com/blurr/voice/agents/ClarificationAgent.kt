@@ -1,8 +1,8 @@
 package com.blurr.voice.agents
 
 import android.content.Context
-import com.blurr.voice.api.GeminiApi
-import com.google.ai.client.generativeai.type.TextPart
+import com.blurr.voice.api.LLMApi  // Changed from GeminiApi to LLMApi for puter.js
+// REMOVED: import com.google.ai.client.generativeai.type.TextPart  // Removed Google Generative AI dependency
 import org.json.JSONObject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,7 +23,7 @@ data class ClarificationResult(
 /**
  * An agent responsible for analyzing a user's task instruction to determine if it's
  * clear enough for execution or if it requires more information.
- * It communicates with the Gemini API using a structured JSON format for both requests and responses.
+ * It communicates with the puter.js API using a structured JSON format for both requests and responses.
  */
 class ClarificationAgent {
 
@@ -33,7 +33,7 @@ class ClarificationAgent {
      *
      * @param instruction The user's raw task instruction (e.g., "send a message to mom").
      * @param conversationHistory The recent history of the conversation for context.
-     * @param context The Android context, required for the Gemini API call.
+     * @param context The Android context, required for the puter.js API call.
      * @return A [ClarificationResult] containing the status and any necessary questions.
      */
     suspend fun analyze(instruction: String, conversationHistory: List<Pair<String, List<Any>>>, context: Context): ClarificationResult {
@@ -41,15 +41,15 @@ class ClarificationAgent {
             // 1. Create a specialized prompt for the LLM.
             val prompt = createPrompt(instruction, conversationHistory)
 
-            // 2. Prepare the chat structure for the Gemini API.
+            // 2. Prepare the chat structure for the puter.js API.
             // For this specific task, we only need to send our structured prompt.
-            val apiChat = listOf("user" to listOf(TextPart(prompt)))
+            val apiChat = listOf("user" to listOf(prompt))  // Changed from TextPart(prompt) to just prompt string
 
-            // 3. Call the Gemini API.
+            // 3. Call the puter.js API.
             val responseJson = withContext(Dispatchers.IO) {
-                GeminiApi.generateContent(
+                LLMApi.generateContent(
                     chat = apiChat,
-                    modelName = "gemini-1.5-flash-latest", // Using a fast, modern model for this task.
+                    modelName = "gpt-5-nano", // Using puter.js compatible model
                     context = context
                 )
             }
@@ -67,7 +67,7 @@ class ClarificationAgent {
     }
 
     /**
-     * Parses the JSON response string from the Gemini API into a [ClarificationResult].
+     * Parses the JSON response string from the puter.js API into a [ClarificationResult].
      * It's designed to be robust against common formatting issues like markdown code blocks.
      *
      * @param jsonResponse The raw JSON string from the API.
@@ -101,7 +101,7 @@ class ClarificationAgent {
     }
 
     /**
-     * Creates the prompt for the Gemini API, instructing it to analyze the user's
+     * Creates the prompt for the puter.js API, instructing it to analyze the user's
      * instruction and respond with a specific JSON format.
      *
      * @param instruction The user's task instruction to analyze.
@@ -113,7 +113,8 @@ class ClarificationAgent {
         val historyString = conversationHistory
             .takeLast(6) // Use last 6 turns to keep the prompt focused.
             .joinToString("\n") { (role, parts) ->
-                val text = parts.filterIsInstance<TextPart>().joinToString(" ") { it.text }
+                // Changed from filterIsInstance<TextPart> to just handle strings directly
+                val text = parts.joinToString(" ") { it.toString() }
                 // Clean up the model's JSON response from the main conversation history.
                 val cleanedText = if (role == "model" && text.trim().startsWith("{")) "[Agent performs an action]" else text
                 "$role: $cleanedText"

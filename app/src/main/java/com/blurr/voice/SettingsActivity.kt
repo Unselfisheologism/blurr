@@ -25,6 +25,7 @@ import com.blurr.voice.utilities.SpeechCoordinator
 import com.blurr.voice.utilities.VoicePreferenceManager
 import com.blurr.voice.utilities.UserProfileManager
 import com.blurr.voice.utilities.WakeWordManager
+import com.blurr.voice.managers.PuterManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -92,6 +93,11 @@ class SettingsActivity : BaseNavigationActivity() {
     private fun initialize() {
         sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         sc = SpeechCoordinator.getInstance(this)
+        availableVoices = getAvailablePuterVoices()
+        // Initialize wake word manager
+        wakeWordManager = WakeWordManager(this, requestPermissionLauncher)
+    }
+    
     /**
      * Get available voices from Puter.js
      */
@@ -99,15 +105,12 @@ class SettingsActivity : BaseNavigationActivity() {
         // Return a list with just the default Puter voice for now
         return listOf(TTSVoice.PUTER_DEFAULT)
     }
-        availableVoices = getAvailablePuterVoices()
-        // Initialize wake word manager
+
     /**
      * Synthesizes speech using Puter.js TTS functionality
      */
     private suspend fun puterTtsSynthesize(text: String, voice: TTSVoice): ByteArray {
         return PuterManager.getInstance(this).synthesizeTextToSpeech(text)
-    }
-        wakeWordManager = WakeWordManager(this, requestPermissionLauncher)
     }
 
     private fun setupUI() {
@@ -122,7 +125,6 @@ class SettingsActivity : BaseNavigationActivity() {
         editUserName = findViewById(R.id.editUserName)
         editUserEmail = findViewById(R.id.editUserEmail)
         
-
 
         setupClickListeners()
         setupVoicePicker()

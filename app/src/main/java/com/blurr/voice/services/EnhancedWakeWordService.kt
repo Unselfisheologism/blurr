@@ -17,15 +17,13 @@ import androidx.core.content.ContextCompat
 import com.blurr.voice.ConversationalAgentService
 import com.blurr.voice.MainActivity
 import com.blurr.voice.R
-import com.blurr.voice.api.PorcupineWakeWordDetector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 
 class EnhancedWakeWordService : Service() {
 
-    private var porcupineDetector: PorcupineWakeWordDetector? = null
-    private var usePorcupine = false
+    private var usePorcupine = false // Keep for compatibility but unused
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     companion object {
@@ -69,7 +67,7 @@ class EnhancedWakeWordService : Service() {
         val engineName = if (usePorcupine) "Porcupine" else "STT"
         val notification: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Blurr Wake Word")
-            .setContentText("Listening for 'Panda' with Porcupine engine...")
+            .setContentText("Wake word service running...")
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentIntent(pendingIntent)
             .build()
@@ -105,7 +103,7 @@ class EnhancedWakeWordService : Service() {
         }
 
         val onApiFailure: () -> Unit = {
-            Log.d("EnhancedWakeWordService", "Porcupine API failed, starting floating button service")
+            Log.d("EnhancedWakeWordService", "Wake word API failed, starting floating button service")
             // Start the floating button service when API fails
             val intent = Intent(ACTION_WAKE_WORD_FAILED)
             sendBroadcast(intent)
@@ -113,15 +111,11 @@ class EnhancedWakeWordService : Service() {
         }
 
         try {
-            if (usePorcupine) {
-                Log.d("EnhancedWakeWordService", "Using Porcupine wake word detection")
-                porcupineDetector = PorcupineWakeWordDetector(this, onWakeWordDetected, onApiFailure)
-                porcupineDetector?.start()
-            } else {
-                Log.d("EnhancedWakeWordService", "Using Porcupine wake word detection")
-                porcupineDetector = PorcupineWakeWordDetector(this, onWakeWordDetected, onApiFailure)
-                porcupineDetector?.start()
-            }
+            // Since Porcupine is removed, we'll just start a basic wake word detection or show a message
+            Log.d("EnhancedWakeWordService", "Porcupine wake word detection has been removed. Using alternative method.")
+            
+            // For now, just send a failure broadcast to trigger the fallback mechanism
+            onApiFailure()
         } catch (e: Exception) {
             Log.e("EnhancedWakeWordService", "Error starting wake word detection: ${e.message}")
             // If there's any error, start the floating button service
@@ -133,9 +127,6 @@ class EnhancedWakeWordService : Service() {
         super.onDestroy()
         
         Log.d("EnhancedWakeWordService", "Service onDestroy() called")
-        
-        porcupineDetector?.stop()
-        porcupineDetector = null
         
         isRunning = false
         Log.d("EnhancedWakeWordService", "Service destroyed, isRunning set to false")
@@ -156,4 +147,4 @@ class EnhancedWakeWordService : Service() {
             manager.createNotificationChannel(serviceChannel)
         }
     }
-} 
+}

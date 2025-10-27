@@ -147,7 +147,7 @@ class TTSManager private constructor(private val context: Context) : TextToSpeec
                 // Update access order (move to end)
                 accessOrder.remove(cacheKey)
                 accessOrder.addLast(cacheKey)
-                Log.d("TTSManager", "Cache hit for: ${text.take(50)}...")
+                Log.d("TSManager", "Cache hit for: ${text.take(50)}...")
                 return cachedAudio.audioData
             }
         }
@@ -357,12 +357,13 @@ class TTSManager private constructor(private val context: Context) : TextToSpeec
     }
     
     /**
-    /**
      * Synthesizes speech using Puter.js TTS functionality
      */
     private suspend fun puterTtsSynthesize(text: String, voice: TTSVoice): ByteArray {
         return PuterManager.getInstance(context).synthesizeTextToSpeech(text)
     }
+    
+    /**
      * Smart queue-based playback that starts playing immediately while preloading in background
      */
     private suspend fun playWithSmartQueue(textChunks: List<String>, selectedVoice: TTSVoice) {
