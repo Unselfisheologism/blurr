@@ -8,9 +8,7 @@ import com.blurr.voice.intents.impl.DialIntent
 import com.blurr.voice.intents.impl.EmailComposeIntent
 import com.blurr.voice.intents.impl.ShareTextIntent
 import com.blurr.voice.intents.impl.ViewUrlIntent
-import com.google.firebase.Firebase
-import com.google.firebase.remoteconfig.remoteConfig
-import com.google.firebase.remoteconfig.remoteConfigSettings
+import com.blurr.voice.managers.PuterManager
 
 class MyApplication : Application() {
 
@@ -23,13 +21,8 @@ class MyApplication : Application() {
         super.onCreate()
         appContext = applicationContext
 
-        // Initialize Firebase Remote Config
-        val remoteConfig = Firebase.remoteConfig
-        val configSettings = remoteConfigSettings {
-            minimumFetchIntervalInSeconds = if (BuildConfig.DEBUG) 1L else 3L
-        }
-        remoteConfig.setConfigSettingsAsync(configSettings)
-        remoteConfig.setDefaultsAsync(R.xml.remote_config_defaults)
+        // Initialize puter.js for remote config functionality
+        PuterManager.initialize(this)
 
         IntentRegistry.register(DialIntent())
         IntentRegistry.register(ViewUrlIntent())

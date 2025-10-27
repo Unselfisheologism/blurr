@@ -23,17 +23,12 @@ import com.blurr.voice.v2.llm.GeminiApi
 import com.blurr.voice.v2.message_manager.MemoryManager
 import com.blurr.voice.v2.perception.Perception
 import com.blurr.voice.v2.perception.SemanticParser
-import com.google.firebase.Firebase
-import com.google.firebase.Timestamp
-import com.google.firebase.auth.auth
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.firestore
+import com.blurr.voice.managers.PuterManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.util.Queue
 import java.util.concurrent.ConcurrentLinkedQueue
 
@@ -63,9 +58,8 @@ class AgentService : Service() {
     private lateinit var llmApi: GeminiApi
     private lateinit var actionExecutor: ActionExecutor
     
-    // Firebase instances for task tracking
-    private val db = Firebase.firestore
-    private val auth = Firebase.auth
+    // Puter.js instance for task tracking
+    private lateinit var puterManager: PuterManager
 
 //    companion object {
 //        private const val NOTIFICATION_CHANNEL_ID = "AgentServiceChannel"
@@ -126,6 +120,9 @@ class AgentService : Service() {
         super.onCreate()
         Log.d(TAG, "onCreate: Service is being created.")
         visualFeedbackManager.showTtsWave()
+
+        // Initialize puter manager
+        puterManager = PuterManager.getInstance(this)
 
         // Create the notification channel required for foreground services on Android 8.0+
         createNotificationChannel()
@@ -213,7 +210,7 @@ class AgentService : Service() {
 
             try {
                 Log.i(TAG, "Executing task: $task")
-                trackTaskInFirebase(task)
+                trackTaskInPuter(task)
                 agent.run(task)
                 trackTaskCompletion(task, true)
                 Log.i(TAG, "Task completed successfully: $task")
@@ -294,67 +291,60 @@ class AgentService : Service() {
     }
 
     /**
-     * Tracks the task start in Firebase by appending it to the user's task history array.
+     * Tracks the task start in puter.js by saving to the user's key-value store.
      */
-    private suspend fun trackTaskInFirebase(task: String) {
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
+    private suspend fun trackTaskInPuter(task: String) {
+        if (!puterManager.isUserSignedIn()) {
             Log.w(TAG, "Cannot track task, user is not logged in.")
             return
         }
 
         try {
-            val taskEntry = hashMapOf(
+            val taskEntry = mapOf(
                 "task" to task,
                 "status" to "started",
-                "startedAt" to Timestamp.now(),
+                "startedAt" to System.currentTimeMillis(),
                 "completedAt" to null,
                 "success" to null,
                 "errorMessage" to null
             )
 
-            // Append the task to the user's taskHistory array
-            db.collection("users").document(currentUser.uid)
-                .update("taskHistory", FieldValue.arrayUnion(taskEntry))
-                .await()
-
-            Log.d(TAG, "Successfully tracked task start in Firebase for user ${currentUser.uid}: $task")
+            // Save the task to puter.js key-value store
+            val taskKey = "task_${System.currentTimeMillis()}"
+            puterManager.saveTaskToKvStore(taskKey, taskEntry)
+            
+            Log.d(TAG, "Successfully tracked task start in puter.js: $task")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to track task in Firebase", e)
-            // Don't fail the task execution if Firebase tracking fails
+            Log.e(TAG, "Failed to track task in puter.js", e)
+            // Don't fail the task execution if puter.js tracking fails
         }
     }
 
     /**
-     * Updates the task completion status in Firebase.
-     * Since Firestore doesn't support updating array elements directly,
-     * we'll add a new completion entry to track the result.
+     * Updates the task completion status in puter.js.
      */
     private suspend fun trackTaskCompletion(task: String, success: Boolean, errorMessage: String? = null) {
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
+        if (!puterManager.isUserSignedIn()) {
             Log.w(TAG, "Cannot track task completion, user is not logged in.")
             return
         }
 
         try {
-            val completionEntry = hashMapOf(
+            val completionEntry = mapOf(
                 "task" to task,
                 "status" to if (success) "completed" else "failed",
-//                "startedAt" to null, // This is a completion entry, not a start entry
-                "completedAt" to Timestamp.now(),
+                "completedAt" to System.currentTimeMillis(),
                 "success" to success,
                 "errorMessage" to errorMessage
             )
 
-            // Append the completion status to the user's taskHistory array
-            db.collection("users").document(currentUser.uid)
-                .update("taskHistory", FieldValue.arrayUnion(completionEntry))
-                .await()
-
-            Log.d(TAG, "Successfully tracked task completion in Firebase for user ${currentUser.uid}: $task (success: $success)")
+            // Save the completion status to puter.js key-value store
+            val completionKey = "completion_${System.currentTimeMillis()}"
+            puterManager.saveTaskToKvStore(completionKey, completionEntry)
+            
+            Log.d(TAG, "Successfully tracked task completion in puter.js: $task (success: $success)")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to track task completion in Firebase", e)
+            Log.e(TAG, "Failed to track task completion in puter.js", e)
         }
     }
 }

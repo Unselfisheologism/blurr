@@ -157,6 +157,111 @@ class PuterBridge(private val puterService: PuterService) {
     }
 
     /**
+     * Execute a Puter.js key-value delete function
+     */
+    fun executeKvDel(webView: WebView, key: String, callback: (String?) -> Unit) {
+        val jsCode = """
+            puterKvDel("$key")
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "kvdeld");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "kvdeld");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js key-value list function
+     */
+    fun executeKvList(webView: WebView, pattern: String = "*", returnValues: Boolean = false, callback: (String?) -> Unit) {
+        val jsCode = """
+            puterKvList("$pattern", $returnValues)
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "kvlist");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "kvlist");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js key-value increment function
+     */
+    fun executeKvIncr(webView: WebView, key: String, amount: Int = 1, callback: (String?) -> Unit) {
+        val jsCode = """
+            puterKvIncr("$key", $amount)
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "kvincr");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "kvincr");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js key-value decrement function
+     */
+    fun executeKvDecr(webView: WebView, key: String, amount: Int = 1, callback: (String?) -> Unit) {
+        val jsCode = """
+            puterKvDecr("$key", $amount)
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "kvdecr");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "kvdecr");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js key-value flush function
+     */
+    fun executeKvFlush(webView: WebView, callback: (String?) -> Unit) {
+        val jsCode = """
+            puterKvFlush()
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "kvflush");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "kvflush");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
      * Execute a Puter.js authentication sign-in function
      */
     fun executeAuthSignIn(webView: WebView, callback: (Boolean) -> Unit) {
@@ -186,6 +291,261 @@ class PuterBridge(private val puterService: PuterService) {
             if (window.AndroidInterface) {
                 window.AndroidInterface.onAIResponse(JSON.stringify(isSignedIn), "authcheck");
             }
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js get user function
+     */
+    fun executeGetUser(webView: WebView, callback: (String?) -> Unit) {
+        val jsCode = """
+            puterAuthGetUser()
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "getuser");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "getuser");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+    /**
+     * Execute a Puter.js chat function with streaming support
+     */
+    fun executeChatStream(webView: WebView, query: String, onChunkCallback: (String) -> Unit, callback: (String?) -> Unit) {
+        val jsCode = """
+            puterChatStream("$query", (chunk) => {
+                if (window.AndroidInterface) {
+                    window.AndroidInterface.onAIResponse(JSON.stringify({type: 'chunk', data: chunk}), "chatstream");
+                }
+            })
+            .then(response => {
+                if (window.AndroidInterface) {
+                    window.AndroidInterface.onAIResponse(JSON.stringify({type: 'complete', data: response}), "chatstream");
+                }
+            })
+            .catch(error => {
+                if (window.AndroidInterface) {
+                    window.AndroidInterface.onAIError(error.message, "chatstream");
+                }
+            });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js file system write function
+     */
+    fun executeFsWrite(webView: WebView, path: String, data: String, options: String = "{}", callback: (String?) -> Unit) {
+        val jsCode = """
+            puterFsWrite("$path", "$data", $options)
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "fswrite");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "fswrite");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js file system read function
+     */
+    fun executeFsRead(webView: WebView, path: String, options: String = "{}", callback: (String?) -> Unit) {
+        val jsCode = """
+            puterFsRead("$path", $options)
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "fsread");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "fsread");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js file system mkdir function
+     */
+    fun executeFsMkdir(webView: WebView, path: String, options: String = "{}", callback: (String?) -> Unit) {
+        val jsCode = """
+            puterFsMkdir("$path", $options)
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "fsmkdir");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "fsmkdir");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js file system readdir function
+     */
+    fun executeFsReaddir(webView: WebView, path: String, callback: (String?) -> Unit) {
+        val jsCode = """
+            puterFsReaddir("$path")
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "fsreaddir");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "fsreaddir");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js file system delete function
+     */
+    fun executeFsDelete(webView: WebView, path: String, options: String = "{}", callback: (String?) -> Unit) {
+        val jsCode = """
+            puterFsDelete("$path", $options)
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "fsdelete");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "fsdelete");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js file system move function
+     */
+    fun executeFsMove(webView: WebView, source: String, destination: String, options: String = "{}", callback: (String?) -> Unit) {
+        val jsCode = """
+            puterFsMove("$source", "$destination", $options)
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "fsmove");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "fsmove");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js file system copy function
+     */
+    fun executeFsCopy(webView: WebView, source: String, destination: String, options: String = "{}", callback: (String?) -> Unit) {
+        val jsCode = """
+            puterFsCopy("$source", "$destination", $options)
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "fscopy");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "fscopy");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js file system rename function
+     */
+    fun executeFsRename(webView: WebView, path: String, newName: String, callback: (String?) -> Unit) {
+        val jsCode = """
+            puterFsRename("$path", "$newName")
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "fsrename");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "fsrename");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js file system stat function
+     */
+    fun executeFsStat(webView: WebView, path: String, callback: (String?) -> Unit) {
+        val jsCode = """
+            puterFsStat("$path")
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "fsstat");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "fsstat");
+                    }
+                });
+        """.trimIndent()
+        
+        webView.evaluateJavascript(jsCode, null)
+    }
+
+    /**
+     * Execute a Puter.js file system space function
+     */
+    fun executeFsSpace(webView: WebView, callback: (String?) -> Unit) {
+        val jsCode = """
+            puterFsSpace()
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(response), "fsspace");
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, "fsspace");
+                    }
+                });
         """.trimIndent()
         
         webView.evaluateJavascript(jsCode, null)

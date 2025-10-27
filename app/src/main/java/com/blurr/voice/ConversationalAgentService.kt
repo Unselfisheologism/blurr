@@ -40,22 +40,13 @@ import com.blurr.voice.utilities.UserProfileManager
 import com.blurr.voice.utilities.VisualFeedbackManager
 import com.blurr.voice.v2.AgentService
 import com.google.ai.client.generativeai.type.TextPart
-import com.google.firebase.Firebase
-import com.google.firebase.Timestamp
-import com.google.firebase.analytics.FirebaseAnalytics
-import com.google.firebase.analytics.analytics
-import com.google.firebase.auth.auth
-import com.google.firebase.firestore.FieldValue
-import com.blurr.voice.utilities.ServicePermissionManager
-import com.blurr.voice.utilities.PandaStateManager
-import com.google.firebase.firestore.firestore
+import com.blurr.voice.managers.PuterManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import org.json.JSONObject
 
 data class ModelDecision(
@@ -90,12 +81,10 @@ class ConversationalAgentService : Service() {
     private val memoryManager by lazy { MemoryManager.getInstance(this) }
     private val usedMemories = mutableSetOf<String>() // Track memories already used in this conversation
     private var hasHeardFirstUtterance = false // Track if we've received the first user utterance
-    private lateinit var firebaseAnalytics: FirebaseAnalytics
+    private lateinit var puterManager: PuterManager
     private val eyes by lazy { Eyes(this) }
     
-    // Firebase instances for conversation tracking
-    private val db = Firebase.firestore
-    private val auth = Firebase.auth
+    // Puter.js instances for conversation tracking
     private var conversationId: String? = null // Track current conversation session
 
 
@@ -112,11 +101,11 @@ class ConversationalAgentService : Service() {
         super.onCreate()
         Log.d("ConvAgent", "Service onCreate")
         
-        // Initialize Firebase Analytics
-        firebaseAnalytics = Firebase.analytics
+        // Initialize puter.js manager
+        puterManager = PuterManager.getInstance(this)
         
         // Track service creation
-        firebaseAnalytics.logEvent("conversational_agent_started", null)
+        puterManager.trackEvent("conversational_agent_started")
         
         isRunning = true
         createNotificationChannel()
@@ -168,7 +157,7 @@ class ConversationalAgentService : Service() {
         Log.d("ConvAgent", "Entering Text Mode. Stopping STT/TTS.")
         
         // Track text mode activation
-        firebaseAnalytics.logEvent("text_mode_activated", null)
+        puterManager.trackEvent("text_mode_activated")
         
         isTextModeActive = true
         pandaStateManager.setState(PandaState.IDLE)
@@ -221,7 +210,7 @@ class ConversationalAgentService : Service() {
         }
 
         // Track conversation initiation
-        firebaseAnalytics.logEvent("conversation_initiated", null)
+        puterManager.trackEvent("conversation_initiated")
         trackConversationStart()
 
         // Skip greeting and start listening immediately
@@ -299,18 +288,18 @@ class ConversationalAgentService : Service() {
                 pandaStateManager.triggerErrorState()
                 
                 // Track STT errors
-                val sttErrorBundle = android.os.Bundle().apply {
-                    putString("error_message", error.take(100))
-                    putInt("error_attempt", sttErrorAttempts + 1)
-                    putInt("max_attempts", maxSttErrorAttempts)
-                }
-                firebaseAnalytics.logEvent("stt_error", sttErrorBundle)
+                val sttErrorBundle = mapOf(
+                    "error_message" to error.take(100),
+                    "error_attempt" to (sttErrorAttempts + 1).toString(),
+                    "max_attempts" to maxSttErrorAttempts.toString()
+                )
+                puterManager.trackEvent("stt_error", sttErrorBundle)
                 
                 visualFeedbackManager.hideTranscription()
                 sttErrorAttempts++
                 serviceScope.launch {
                     if (sttErrorAttempts >= maxSttErrorAttempts) {
-                        firebaseAnalytics.logEvent("conversation_ended_stt_errors", null)
+                        puterManager.trackEvent("conversation_ended_stt_errors")
                         val exitMessage = "I'm having trouble understanding you clearly. Please try calling later!"
                         trackMessage("model", exitMessage, "error_message")
                         gracefulShutdown(exitMessage, "stt_errors")
@@ -395,18 +384,18 @@ class ConversationalAgentService : Service() {
                 pandaStateManager.triggerErrorState()
                 
                 // Track STT errors
-                val sttErrorBundle = android.os.Bundle().apply {
-                    putString("error_message", error.take(100))
-                    putInt("error_attempt", sttErrorAttempts + 1)
-                    putInt("max_attempts", maxSttErrorAttempts)
-                }
-                firebaseAnalytics.logEvent("stt_error", sttErrorBundle)
+                val sttErrorBundle = mapOf(
+                    "error_message" to error.take(100),
+                    "error_attempt" to (sttErrorAttempts + 1).toString(),
+                    "max_attempts" to maxSttErrorAttempts.toString()
+                )
+                puterManager.trackEvent("stt_error", sttErrorBundle)
                 
                 visualFeedbackManager.hideTranscription()
                 sttErrorAttempts++
                 serviceScope.launch {
                     if (sttErrorAttempts >= maxSttErrorAttempts) {
-                        firebaseAnalytics.logEvent("conversation_ended_stt_errors", null)
+                        puterManager.trackEvent("conversation_ended_stt_errors")
                         val exitMessage = "I'm having trouble understanding you clearly. Please try calling later!"
                         trackMessage("model", exitMessage, "error_message")
                         gracefulShutdown(exitMessage, "stt_errors")
@@ -517,20 +506,20 @@ class ConversationalAgentService : Service() {
 
             conversationHistory = addResponse("user", userInput, conversationHistory)
             
-            // Track user message in Firebase
+            // Track user message in puter.js
             trackMessage("user", userInput, "input")
 
             // Track user input
-            val inputBundle = android.os.Bundle().apply {
-                putString("input_type", if (isTextModeActive) "text" else "voice")
-                putInt("input_length", userInput.length)
-                putBoolean("is_command", userInput.equals("stop", ignoreCase = true) || userInput.equals("exit", ignoreCase = true))
-            }
-            firebaseAnalytics.logEvent("user_input_processed", inputBundle)
+            val inputBundle = mapOf(
+                "input_type" to if (isTextModeActive) "text" else "voice",
+                "input_length" to userInput.length.toString(),
+                "is_command" to (userInput.equals("stop", ignoreCase = true) || userInput.equals("exit", ignoreCase = true)).toString()
+            )
+            puterManager.trackEvent("user_input_processed", inputBundle)
 
             try {
                 if (userInput.equals("stop", ignoreCase = true) || userInput.equals("exit", ignoreCase = true)) {
-                    firebaseAnalytics.logEvent("conversation_ended_by_command", null)
+                    puterManager.trackEvent("conversation_ended_by_command")
                     trackMessage("model", "Goodbye!", "farewell")
                     gracefulShutdown("Goodbye!", "command")
                     return@launch
@@ -545,14 +534,14 @@ class ConversationalAgentService : Service() {
                 when (decision.type) {
                     "Task" -> {
                         // Track task request
-                        val taskBundle = android.os.Bundle().apply {
-                            putString("task_instruction", decision.instruction.take(100)) // Limit length for analytics
-                            putBoolean("agent_already_running", AgentService.isRunning)
-                        }
-                        firebaseAnalytics.logEvent("task_requested", taskBundle)
+                        val taskBundle = mapOf(
+                            "task_instruction" to decision.instruction.take(100), // Limit length for analytics
+                            "agent_already_running" to AgentService.isRunning.toString()
+                        )
+                        puterManager.trackEvent("task_requested", taskBundle)
                         
                         if (AgentService.isRunning) {
-                            firebaseAnalytics.logEvent("task_rejected_agent_busy", null)
+                            puterManager.trackEvent("task_rejected_agent_busy")
                             val busyMessage = "I'm already working on '${AgentService.currentTask}'. Please let me finish that first, or you can ask me to stop it."
                             speakAndThenListen(busyMessage)
                             conversationHistory = addResponse("model", busyMessage, conversationHistory)
@@ -580,11 +569,11 @@ class ConversationalAgentService : Service() {
 
                             if (needsClarification) {
                                 // Track clarification needed
-                                val clarificationBundle = android.os.Bundle().apply {
-                                    putInt("clarification_attempt", clarificationAttempts + 1)
-                                    putInt("questions_count", questions.size)
-                                }
-                                firebaseAnalytics.logEvent("task_clarification_needed", clarificationBundle)
+                                val clarificationBundle = mapOf(
+                                    "clarification_attempt" to (clarificationAttempts + 1).toString(),
+                                    "questions_count" to questions.size.toString()
+                                )
+                                puterManager.trackEvent("task_clarification_needed", clarificationBundle)
                                 
                                 clarificationAttempts++
                                 displayClarificationQuestions(questions)
@@ -608,7 +597,7 @@ class ConversationalAgentService : Service() {
                                 )
                                 
                                 // Track task execution
-                                firebaseAnalytics.logEvent("task_executed", taskBundle)
+                                puterManager.trackEvent("task_executed", taskBundle)
                                 
                                 val originalInstruction = decision.instruction
                                 AgentService.start(applicationContext, originalInstruction)
@@ -622,7 +611,7 @@ class ConversationalAgentService : Service() {
                             )
                             
                             // Track max clarification attempts reached
-                            firebaseAnalytics.logEvent("task_executed_max_clarification", taskBundle)
+                            puterManager.trackEvent("task_executed_max_clarification", taskBundle)
                             
                             AgentService.start(applicationContext, decision.instruction)
                             trackMessage("model", decision.reply, "task_confirmation")
@@ -634,10 +623,10 @@ class ConversationalAgentService : Service() {
                         Log.d("ConvAgent", "Model requested to kill the running agent service.")
                         
                         // Track kill task request
-                        val killTaskBundle = android.os.Bundle().apply {
-                            putBoolean("task_was_running", AgentService.isRunning)
-                        }
-                        firebaseAnalytics.logEvent("kill_task_requested", killTaskBundle)
+                        val killTaskBundle = mapOf(
+                            "task_was_running" to AgentService.isRunning.toString()
+                        )
+                        puterManager.trackEvent("kill_task_requested", killTaskBundle)
                         
                         if (AgentService.isRunning) {
                             AgentService.stop(applicationContext)
@@ -651,15 +640,15 @@ class ConversationalAgentService : Service() {
                     }
                     else -> { // Default to "Reply"
                         // Track conversational reply
-                        val replyBundle = android.os.Bundle().apply {
-                            putBoolean("conversation_ended", decision.shouldEnd)
-                            putInt("reply_length", decision.reply.length)
-                        }
-                        firebaseAnalytics.logEvent("conversational_reply", replyBundle)
+                        val replyBundle = mapOf(
+                            "conversation_ended" to decision.shouldEnd.toString(),
+                            "reply_length" to decision.reply.length.toString()
+                        )
+                        puterManager.trackEvent("conversational_reply", replyBundle)
                         
                         if (decision.shouldEnd) {
                             Log.d("ConvAgent", "Model decided to end the conversation.")
-                            firebaseAnalytics.logEvent("conversation_ended_by_model", null)
+                            puterManager.trackEvent("conversation_ended_by_model")
                             trackMessage("model", decision.reply, "farewell")
                             gracefulShutdown(decision.reply, "model_ended")
                         } else {
@@ -677,11 +666,11 @@ class ConversationalAgentService : Service() {
                 pandaStateManager.triggerErrorState()
                 
                 // Track processing errors
-                val errorBundle = android.os.Bundle().apply {
-                    putString("error_message", e.message?.take(100) ?: "Unknown error")
-                    putString("error_type", e.javaClass.simpleName)
-                }
-                firebaseAnalytics.logEvent("input_processing_error", errorBundle)
+                val errorBundle = mapOf(
+                    "error_message" to (e.message?.take(100) ?: "Unknown error"),
+                    "error_type" to e.javaClass.simpleName
+                )
+                puterManager.trackEvent("input_processing_error", errorBundle)
                 
                 speakAndThenListen("closing voice mode")
             }
@@ -825,12 +814,12 @@ class ConversationalAgentService : Service() {
             val keyboardStatus = eyes.getKeyBoardStatus()
             
             // Track screen context usage
-            val screenContextBundle = android.os.Bundle().apply {
-                putString("current_app", currentApp.take(50)) // Limit length for analytics
-                putBoolean("keyboard_visible", keyboardStatus)
-                putInt("screen_xml_length", screenXml.length)
-            }
-            firebaseAnalytics.logEvent("screen_context_captured", screenContextBundle)
+            val screenContextBundle = mapOf(
+                "current_app" to currentApp.take(50), // Limit length for analytics
+                "keyboard_visible" to keyboardStatus.toString(),
+                "screen_xml_length" to screenXml.length.toString()
+            )
+            puterManager.trackEvent("screen_context_captured", screenContextBundle)
             
             """
             Current App: $currentApp
@@ -842,11 +831,11 @@ class ConversationalAgentService : Service() {
             Log.e("ConvAgent", "Error getting screen context", e)
             
             // Track screen context errors
-            val errorBundle = android.os.Bundle().apply {
-                putString("error_message", e.message?.take(100) ?: "Unknown error")
-                putString("error_type", e.javaClass.simpleName)
-            }
-            firebaseAnalytics.logEvent("screen_context_error", errorBundle)
+            val errorBundle = mapOf(
+                "error_message" to (e.message?.take(100) ?: "Unknown error"),
+                "error_type" to e.javaClass.simpleName
+            )
+            puterManager.trackEvent("screen_context_error", errorBundle)
             
             "Screen context unavailable"
         }
@@ -1142,16 +1131,16 @@ class ConversationalAgentService : Service() {
 
     private suspend fun gracefulShutdown(exitMessage: String? = null, endReason: String = "graceful") {
         // Track graceful shutdown
-        val shutdownBundle = android.os.Bundle().apply {
-            putBoolean("had_exit_message", exitMessage != null)
-            putInt("conversation_length", conversationHistory.size)
-            putBoolean("text_mode_used", isTextModeActive)
-            putInt("clarification_attempts", clarificationAttempts)
-            putInt("stt_error_attempts", sttErrorAttempts)
-        }
-        firebaseAnalytics.logEvent("conversation_ended_gracefully", shutdownBundle)
+        val shutdownBundle = mapOf(
+            "had_exit_message" to (exitMessage != null).toString(),
+            "conversation_length" to conversationHistory.size.toString(),
+            "text_mode_used" to isTextModeActive.toString(),
+            "clarification_attempts" to clarificationAttempts.toString(),
+            "stt_error_attempts" to sttErrorAttempts.toString()
+        )
+        puterManager.trackEvent("conversation_ended_gracefully", shutdownBundle)
         
-        // Track conversation end in Firebase
+        // Track conversation end in puter.js
         
         trackConversationEnd(endReason)
         
@@ -1182,15 +1171,15 @@ class ConversationalAgentService : Service() {
      */
     private suspend fun instantShutdown() {
         // Track instant shutdown
-        val instantShutdownBundle = android.os.Bundle().apply {
-            putInt("conversation_length", conversationHistory.size)
-            putBoolean("text_mode_used", isTextModeActive)
-            putInt("clarification_attempts", clarificationAttempts)
-            putInt("stt_error_attempts", sttErrorAttempts)
-        }
-        firebaseAnalytics.logEvent("conversation_ended_instantly", instantShutdownBundle)
+        val instantShutdownBundle = mapOf(
+            "conversation_length" to conversationHistory.size.toString(),
+            "text_mode_used" to isTextModeActive.toString(),
+            "clarification_attempts" to clarificationAttempts.toString(),
+            "stt_error_attempts" to sttErrorAttempts.toString()
+        )
+        puterManager.trackEvent("conversation_ended_instantly", instantShutdownBundle)
         
-        // Track conversation end in Firebase
+        // Track conversation end in puter.js
         trackConversationEnd("instant")
         
         Log.d("ConvAgent", "Instant shutdown triggered by user.")
@@ -1215,43 +1204,41 @@ class ConversationalAgentService : Service() {
     }
 
     /**
-     * Tracks the conversation start in Firebase by creating a new conversation entry.
-     * This method is inspired by AgentService's Firebase operations.
+     * Tracks the conversation start in puter.js by creating a new conversation entry.
+     * This method is inspired by AgentService's puter.js operations.
      */
     private fun trackConversationStart() {
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
+        if (!puterManager.isUserSignedIn()) {
             Log.w("ConvAgent", "Cannot track conversation, user is not logged in.")
             return
         }
 
         // Generate a unique conversation ID
-        conversationId = "${System.currentTimeMillis()}_${currentUser.uid.take(8)}"
+        conversationId = "${System.currentTimeMillis()}_${puterManager.getUserId().take(8)}"
 
         serviceScope.launch {
             try {
-                val conversationEntry = hashMapOf(
+                val conversationEntry = mapOf(
                     "conversationId" to conversationId,
-                    "startedAt" to Timestamp.now(),
+                    "startedAt" to System.currentTimeMillis().toString(),
                     "endedAt" to null,
-                    "messageCount" to 0,
-                    "textModeUsed" to false,
-                    "clarificationAttempts" to 0,
-                    "sttErrorAttempts" to 0,
+                    "messageCount" to "0",
+                    "textModeUsed" to "false",
+                    "clarificationAttempts" to "0",
+                    "sttErrorAttempts" to "0",
                     "endReason" to null, // "graceful", "instant", "command", "model", "stt_errors"
-                    "tasksRequested" to 0,
-                    "tasksExecuted" to 0
+                    "tasksRequested" to "0",
+                    "tasksExecuted" to "0"
                 )
 
-                // Append the conversation to the user's conversationHistory array
-                db.collection("users").document(currentUser.uid)
-                    .update("conversationHistory", FieldValue.arrayUnion(conversationEntry))
-                    .await()
+                // Save the conversation to puter.js key-value store
+                val conversationKey = "conversation_${conversationId}"
+                puterManager.saveConversationToKvStore(conversationKey, conversationEntry)
 
-                Log.d("ConvAgent", "Successfully tracked conversation start in Firebase for user ${currentUser.uid}: $conversationId")
+                Log.d("ConvAgent", "Successfully tracked conversation start in puter.js for user ${puterManager.getUserId()}: $conversationId")
             } catch (e: Exception) {
-                Log.e("ConvAgent", "Failed to track conversation start in Firebase", e)
-                // Don't fail the conversation if Firebase tracking fails
+                Log.e("ConvAgent", "Failed to track conversation start in puter.js", e)
+                // Don't fail the conversation if puter.js tracking fails
             }
         }
     }
@@ -1261,67 +1248,63 @@ class ConversationalAgentService : Service() {
      * Fire and forget operation.
      */
     private fun trackMessage(role: String, message: String, messageType: String = "text") {
-        val currentUser = auth.currentUser
-        if (currentUser == null || conversationId == null) {
+        if (!puterManager.isUserSignedIn() || conversationId == null) {
             return
         }
 
         serviceScope.launch {
             try {
-                val messageEntry = hashMapOf(
+                val messageEntry = mapOf(
                     "conversationId" to conversationId,
                     "role" to role, // "user" or "model"
                     "message" to message.take(500), // Limit message length for storage
                     "messageType" to messageType, // "text", "task", "clarification"
-                    "timestamp" to Timestamp.now(),
+                    "timestamp" to System.currentTimeMillis().toString(),
                     "inputMode" to if (isTextModeActive) "text" else "voice"
                 )
 
-                // Append the message to the user's messageHistory array
-                db.collection("users").document(currentUser.uid)
-                    .update("messageHistory", FieldValue.arrayUnion(messageEntry))
-                    .await()
+                // Save the message to puter.js key-value store
+                val messageKey = "message_${System.currentTimeMillis()}"
+                puterManager.saveMessageToKvStore(messageKey, messageEntry)
 
-                Log.d("ConvAgent", "Successfully tracked message in Firebase: $role - ${message.take(50)}...")
+                Log.d("ConvAgent", "Successfully tracked message in puter.js: $role - ${message.take(50)}...")
             } catch (e: Exception) {
-                Log.e("ConvAgent", "Failed to track message in Firebase", e)
+                Log.e("ConvAgent", "Failed to track message in puter.js", e)
             }
         }
     }
 
     /**
-     * Updates the conversation completion status in Firebase.
+     * Updates the conversation completion status in puter.js.
      * Fire and forget operation.
      */
     private fun trackConversationEnd(endReason: String, tasksRequested: Int = 0, tasksExecuted: Int = 0) {
-        val currentUser = auth.currentUser
-        if (currentUser == null || conversationId == null) {
+        if (!puterManager.isUserSignedIn() || conversationId == null) {
             return
         }
 
         serviceScope.launch {
             try {
-                val completionEntry = hashMapOf(
+                val completionEntry = mapOf(
                     "conversationId" to conversationId,
-                    "endedAt" to Timestamp.now(),
-                    "messageCount" to conversationHistory.size,
-                    "textModeUsed" to isTextModeActive,
-                    "clarificationAttempts" to clarificationAttempts,
-                    "sttErrorAttempts" to sttErrorAttempts,
+                    "endedAt" to System.currentTimeMillis().toString(),
+                    "messageCount" to conversationHistory.size.toString(),
+                    "textModeUsed" to isTextModeActive.toString(),
+                    "clarificationAttempts" to clarificationAttempts.toString(),
+                    "sttErrorAttempts" to sttErrorAttempts.toString(),
                     "endReason" to endReason,
-                    "tasksRequested" to tasksRequested,
-                    "tasksExecuted" to tasksExecuted,
+                    "tasksRequested" to tasksRequested.toString(),
+                    "tasksExecuted" to tasksExecuted.toString(),
                     "status" to "completed"
                 )
 
-                // Append the completion status to the user's conversationHistory array
-                db.collection("users").document(currentUser.uid)
-                    .update("conversationHistory", FieldValue.arrayUnion(completionEntry))
-                    .await()
+                // Save the completion status to puter.js key-value store
+                val completionKey = "completion_${conversationId}"
+                puterManager.saveConversationToKvStore(completionKey, completionEntry)
 
-                Log.d("ConvAgent", "Successfully tracked conversation end in Firebase: $conversationId ($endReason)")
+                Log.d("ConvAgent", "Successfully tracked conversation end in puter.js: $conversationId ($endReason)")
             } catch (e: Exception) {
-                Log.e("ConvAgent", "Failed to track conversation end in Firebase", e)
+                Log.e("ConvAgent", "Failed to track conversation end in puter.js", e)
             }
         }
     }
@@ -1331,7 +1314,7 @@ class ConversationalAgentService : Service() {
         Log.d("ConvAgent", "Service onDestroy")
         
         // Track service destruction
-        firebaseAnalytics.logEvent("conversational_agent_destroyed", null)
+        puterManager.trackEvent("conversational_agent_destroyed")
         
         // Track conversation end if not already tracked
         if (conversationId != null) {

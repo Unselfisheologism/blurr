@@ -137,6 +137,81 @@ class PuterManager(private val context: Context) {
         return future
     }
 
+    fun kvDel(key: String): CompletableFuture<Boolean> {
+        val future = CompletableFuture<Boolean>()
+        val callbackId = getNextCallbackId()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response != null)
+        }
+
+        puterService?.puterKvDel(key) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun kvList(pattern: String = "*", returnValues: Boolean = false): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "[]")
+        }
+
+        puterService?.puterKvList(pattern, returnValues) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun kvIncr(key: String, amount: Int = 1): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "")
+        }
+
+        puterService?.puterKvIncr(key, amount) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun kvDecr(key: String, amount: Int = 1): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "")
+        }
+
+        puterService?.puterKvDecr(key, amount) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun kvFlush(): CompletableFuture<Boolean> {
+        val future = CompletableFuture<Boolean>()
+        val callbackId = getNextCallbackId()
+
+        callbacks[callbackId] = { response ->
+            future.complete(true)
+        }
+
+        puterService?.puterKvFlush { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
     fun signIn(): CompletableFuture<Boolean> {
         val future = CompletableFuture<Boolean>()
 
@@ -157,6 +232,55 @@ class PuterManager(private val context: Context) {
         return future
     }
 
+    fun getUser(): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "")
+        }
+
+        puterService?.puterAuthGetUser { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun getUserName(): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        getUser().thenApply { userJson ->
+            try {
+                val user = org.json.JSONObject(userJson)
+                val name = user.optString("username", "Unknown")
+                future.complete(name)
+            } catch (e: Exception) {
+                future.complete("Unknown")
+            }
+        }.exceptionally { throwable ->
+            future.complete("Unknown")
+            null
+        }
+        return future
+    }
+
+    fun getUserEmail(): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        getUser().thenApply { userJson ->
+            try {
+                val user = org.json.JSONObject(userJson)
+                val email = user.optString("email", "unknown@example.com")
+                future.complete(email)
+            } catch (e: Exception) {
+                future.complete("unknown@example.com")
+            }
+        }.exceptionally { throwable ->
+            future.complete("unknown@example.com")
+            null
+        }
+        return future
+    }
+
     private fun getNextCallbackId(): String {
         return "callback_${callbackCounter++}"
     }
@@ -171,5 +295,187 @@ class PuterManager(private val context: Context) {
                 INSTANCE ?: PuterManager(context.applicationContext).also { INSTANCE = it }
             }
         }
+    }
+    fun chatStream(query: String, onChunkCallback: (String) -> Unit): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+
+        callbacks[callbackId] = { response ->
+            try {
+                val jsonObject = org.json.JSONObject(response ?: "")
+                val type = jsonObject.optString("type")
+                if (type == "chunk") {
+                    val data = jsonObject.optString("data")
+                    onChunkCallback(data)
+                } else if (type == "complete") {
+                    val data = jsonObject.optString("data")
+                    future.complete(data)
+                }
+            } catch (e: Exception) {
+                future.complete(response ?: "")
+            }
+        }
+
+        puterService?.executePuterChatStream(query, onChunkCallback) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun fsWrite(path: String, data: String, options: Map<String, Any> = mapOf()): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+        val optionsJson = org.json.JSONObject(options).toString()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "")
+        }
+
+        puterService?.executePuterFsWrite(path, data, optionsJson) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun fsRead(path: String, options: Map<String, Any> = mapOf()): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+        val optionsJson = org.json.JSONObject(options).toString()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "")
+        }
+
+        puterService?.executePuterFsRead(path, optionsJson) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun fsMkdir(path: String, options: Map<String, Any> = mapOf()): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+        val optionsJson = org.json.JSONObject(options).toString()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "")
+        }
+
+        puterService?.executePuterFsMkdir(path, optionsJson) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun fsReaddir(path: String): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "[]")
+        }
+
+        puterService?.executePuterFsReaddir(path) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun fsDelete(path: String, options: Map<String, Any> = mapOf()): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+        val optionsJson = org.json.JSONObject(options).toString()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "")
+        }
+
+        puterService?.executePuterFsDelete(path, optionsJson) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun fsMove(source: String, destination: String, options: Map<String, Any> = mapOf()): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+        val optionsJson = org.json.JSONObject(options).toString()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "")
+        }
+
+        puterService?.executePuterFsMove(source, destination, optionsJson) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun fsCopy(source: String, destination: String, options: Map<String, Any> = mapOf()): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+        val optionsJson = org.json.JSONObject(options).toString()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "")
+        }
+
+        puterService?.executePuterFsCopy(source, destination, optionsJson) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun fsRename(path: String, newName: String): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "")
+        }
+
+        puterService?.executePuterFsRename(path, newName) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun fsStat(path: String): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "")
+        }
+
+        puterService?.executePuterFsStat(path) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+
+    fun fsSpace(): CompletableFuture<String> {
+        val future = CompletableFuture<String>()
+        val callbackId = getNextCallbackId()
+
+        callbacks[callbackId] = { response ->
+            future.complete(response ?: "")
+        }
+
+        puterService?.executePuterFsSpace { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
     }
 }

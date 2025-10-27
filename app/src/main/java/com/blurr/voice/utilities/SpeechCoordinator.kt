@@ -2,7 +2,7 @@ package com.blurr.voice.utilities
 
 import android.content.Context
 import android.util.Log
-import com.blurr.voice.api.GoogleTts
+
 import com.blurr.voice.api.TTSVoice
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import com.blurr.voice.managers.PuterManager
 import kotlin.coroutines.cancellation.CancellationException
 
 class SpeechCoordinator private constructor(private val context: Context) {
@@ -126,6 +127,12 @@ class SpeechCoordinator private constructor(private val context: Context) {
      * Start listening with STT, ensuring TTS is not speaking
      * @param onResult Callback for speech recognition results
      * @param onError Callback for speech recognition errors
+    /**
+     * Synthesizes speech using Puter.js TTS functionality
+     */
+    private suspend fun puterTtsSynthesize(text: String, voice: TTSVoice): ByteArray {
+        return PuterManager.getInstance(context).synthesizeTextToSpeech(text)
+    }
      * @param onListeningStateChange Callback for listening state changes
      */
     suspend fun testVoice(text: String, voice: TTSVoice) {
@@ -139,7 +146,7 @@ class SpeechCoordinator private constructor(private val context: Context) {
                         delay(200)
                     }
                     // 1. Synthesize audio with the specific voice HERE
-                    val audioData = GoogleTts.synthesize(text, voice)
+                    val audioData = puterTtsSynthesize(text, voice)
 
                     // 2. Play the synthesized audio data
                     ttsManager.playAudioData(audioData)

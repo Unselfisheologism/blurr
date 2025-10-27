@@ -36,15 +36,10 @@ import com.blurr.voice.utilities.PandaState
 import com.blurr.voice.utilities.PandaStateManager
 import com.blurr.voice.utilities.DeltaStateColorMapper
 import com.blurr.voice.views.DeltaSymbolView
-import com.google.firebase.Firebase
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.auth
-import com.google.firebase.firestore.firestore
-import com.google.firebase.remoteconfig.remoteConfig
+import com.blurr.voice.managers.PuterManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.tasks.await
 import java.io.File
 
 class MainActivity : BaseNavigationActivity() {
@@ -55,7 +50,7 @@ class MainActivity : BaseNavigationActivity() {
     private lateinit var userId: String
     private lateinit var permissionManager: PermissionManager
     private lateinit var wakeWordManager: WakeWordManager
-    private lateinit var auth: FirebaseAuth
+    private lateinit var puterManager: PuterManager
     private lateinit var tasksLeftTag: View
     private lateinit var wakeWordHelpLink: TextView
     private lateinit var increaseLimitsLink: TextView
@@ -102,8 +97,8 @@ class MainActivity : BaseNavigationActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        auth = Firebase.auth
-        val currentUser = auth.currentUser
+        puterManager = PuterManager.getInstance(this)
+        val currentUser = puterManager.getCurrentUser()
         val profileManager = UserProfileManager(this)
 
         if (currentUser == null || !profileManager.isProfileComplete()) {
@@ -214,7 +209,7 @@ class MainActivity : BaseNavigationActivity() {
 
     override fun onStart() {
         super.onStart()
-        if (auth.currentUser == null) {
+        if (!puterManager.isUserSignedIn()) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
@@ -279,7 +274,7 @@ class MainActivity : BaseNavigationActivity() {
     }
 
     private fun requestLimitIncrease() {
-        val userEmail = auth.currentUser?.email
+        val userEmail = puterManager.getUserEmail()
         if (userEmail.isNullOrEmpty()) {
             Toast.makeText(this, "Could not get your email. Please try again.", Toast.LENGTH_SHORT).show()
             return
@@ -494,71 +489,27 @@ class MainActivity : BaseNavigationActivity() {
                     return
                 }
 
-                val remoteConfig = Firebase.remoteConfig
-
-                // Fetch and activate the latest Remote Config values
-                remoteConfig.fetchAndActivate()
-                    .addOnCompleteListener(this) { task ->
-                        if (task.isSuccessful) {
-                            val updated = task.result
-                            Log.d("MainActivity", "Remote Config params updated: $updated")
-
-                            // Get the message from the activated config
-                            val message = remoteConfig.getString("developerMessage")
-
-                            if (message.isNotEmpty()) {
-                                // Your existing dialog logic
-                                val dialog = AlertDialog.Builder(this@MainActivity)
-                                    .setTitle("Message from Developer")
-                                    .setMessage(message)
-                                    .setPositiveButton("OK") { dialogInterface, _ ->
-                                        dialogInterface.dismiss()
-                                    }
-                                    .show()
-                                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(
-                                    ContextCompat.getColor(this@MainActivity, R.color.black)
-                                )
-                                Log.d("MainActivity", "Developer message displayed from Remote Config.")
-                            } else {
-                                Log.d("MainActivity", "No developer message found in Remote Config.")
-                            }
-                        } else {
-                            Log.e("MainActivity", "Failed to fetch Remote Config.", task.exception)
-                        }
-                    }
+                // For puter.js, we'll fetch the message differently
+                // This is a placeholder implementation - puter.js remote config would work differently
+                val message = puterManager.getDeveloperMessage()
                 
- //                val db = Firebase.firestore
- //                val docRef = db.collection("settings").document("freemium")
- //
- //                docRef.get().addOnSuccessListener { document ->
- //                    if (document != null && document.exists()) {
- //                        val message = document.getString("developerMessage")
- //                        if (!message.isNullOrEmpty()) {
- //                            val dialog = AlertDialog.Builder(this@MainActivity)
- //                                .setTitle("Message from Developer")
- //                                .setMessage(message)
- //                                .setPositiveButton("OK") { dialogInterface, _ ->
- //                                    dialogInterface.dismiss()
- //                                    // Increment the display count after user dismisses
- //                                    val editor = sharedPrefs.edit()
- //                                    editor.putInt("developer_message_count", displayCount + 1)
- //                                    editor.apply()
- //                                    Logger.d("MainActivity", "Developer message display count updated to ${displayCount + 1}")
- //                                }
- //                                .show()
- //                            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(
- //                                ContextCompat.getColor(this@MainActivity, R.color.black)
- //                            )
- //                            Logger.d("MainActivity", "Developer message displayed in dialog")
- //                        } else {
- //                            Logger.d("MainActivity", "Developer message is empty")
- //                        }
- //                    } else {
- //                        Logger.d("MainActivity", "Developer message document does not exist")
- //                    }
- //                }.addOnFailureListener { exception ->
- //                    Logger.e("MainActivity", "Error fetching developer message", exception)
- //                }
+                if (!message.isNullOrEmpty()) {
+                    // Your existing dialog logic
+                    val dialog = AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Message from Developer")
+                        .setMessage(message)
+                        .setPositiveButton("OK") { dialogInterface, _ ->
+                            dialogInterface.dismiss()
+                        }
+                        .show()
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(
+                        ContextCompat.getColor(this@MainActivity, R.color.black)
+                    )
+                    Log.d("MainActivity", "Developer message displayed from puter.js.")
+                } else {
+                    Log.d("MainActivity", "No developer message found in puter.js.")
+                }
+                
             } catch (e: Exception) {
                 Logger.e("MainActivity", "Exception in displayDeveloperMessage", e)
             }

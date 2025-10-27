@@ -1,12 +1,10 @@
 package com.blurr.voice.data
 
-import com.google.firebase.Timestamp
-
 data class TaskHistoryItem(
     val task: String,
     val status: String,
-    val startedAt: Timestamp?,
-    val completedAt: Timestamp?,
+    val startedAt: Long?, // Using Long timestamp instead of cloud service timestamp
+    val completedAt: Long?, // Using Long timestamp instead of cloud service timestamp
     val success: Boolean?,
     val errorMessage: String?
 ) {
@@ -20,14 +18,16 @@ data class TaskHistoryItem(
     }
     
     fun getFormattedStartTime(): String {
-        return startedAt?.toDate()?.let { date ->
+        return startedAt?.let { timestamp ->
+            val date = java.util.Date(timestamp)
             val formatter = java.text.SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", java.util.Locale.getDefault())
             formatter.format(date)
         } ?: "Unknown"
     }
     
     fun getFormattedCompletionTime(): String {
-        return completedAt?.toDate()?.let { date: java.util.Date ->
+        return completedAt?.let { timestamp ->
+            val date = java.util.Date(timestamp)
             val formatter = java.text.SimpleDateFormat("MMM dd, yyyy 'at' h:mm a", java.util.Locale.getDefault())
             formatter.format(date)
         } ?: "Not completed"

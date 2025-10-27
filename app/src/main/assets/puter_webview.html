@@ -20,11 +20,32 @@
             }
         }
 
-        async function puterTxt2Img(prompt) {
+        async function puterChatStream(query, onChunkCallback) {
             try {
-                const response = await puter.ai.generateImage({
-                    prompt: prompt
+                const response = await puter.ai.chat({
+                    messages: [{ role: 'user', content: query }],
+                    stream: true
                 });
+                
+                let fullText = '';
+                for await (const chunk of response) {
+                    if (chunk?.text) {
+                        fullText += chunk.text;
+                        if (onChunkCallback) {
+                            onChunkCallback(chunk.text);
+                        }
+                    }
+                }
+                return fullText;
+            } catch (error) {
+                console.error('Chat stream error:', error);
+                throw error;
+            }
+        }
+
+        async function puterTxt2Img(prompt, options = {}) {
+            try {
+                const response = await puter.ai.txt2img(prompt, options);
                 return response;
             } catch (error) {
                 console.error('Txt2Img error:', error);
@@ -35,9 +56,7 @@
         async function puterImg2Txt(image) {
             try {
                 // Assuming image is a base64 string or file object
-                const response = await puter.ai.describeImage({
-                    image: image
-                });
+                const response = await puter.ai.img2txt(image);
                 return response;
             } catch (error) {
                 console.error('Img2Txt error:', error);
@@ -45,11 +64,9 @@
             }
         }
 
-        async function puterTxt2Speech(text) {
+        async function puterTxt2Speech(text, options = {}) {
             try {
-                const response = await puter.ai.generateSpeech({
-                    text: text
-                });
+                const response = await puter.ai.txt2speech(text, options);
                 return response;
             } catch (error) {
                 console.error('Txt2Speech error:', error);
@@ -59,7 +76,7 @@
 
         async function puterKvGet(key) {
             try {
-                const response = await puter.keyValue.get(key);
+                const response = await puter.kv.get(key);
                 return response;
             } catch (error) {
                 console.error('KV Get error:', error);
@@ -69,7 +86,7 @@
 
         async function puterKvSet(key, value) {
             try {
-                const response = await puter.keyValue.set(key, value);
+                const response = await puter.kv.set(key, value);
                 return response;
             } catch (error) {
                 console.error('KV Set error:', error);
@@ -77,6 +94,158 @@
             }
         }
 
+        async function puterKvDel(key) {
+            try {
+                const response = await puter.kv.del(key);
+                return response;
+            } catch (error) {
+                console.error('KV Del error:', error);
+                throw error;
+            }
+        }
+
+        async function puterKvList(pattern = '*', returnValues = false) {
+            try {
+                const response = await puter.kv.list(pattern, returnValues);
+                return response;
+            } catch (error) {
+                console.error('KV List error:', error);
+                throw error;
+            }
+        }
+
+        async function puterKvIncr(key, amount = 1) {
+            try {
+                const response = await puter.kv.incr(key, amount);
+                return response;
+            } catch (error) {
+                console.error('KV Incr error:', error);
+                throw error;
+            }
+        }
+
+        async function puterKvDecr(key, amount = 1) {
+            try {
+                const response = await puter.kv.decr(key, amount);
+                return response;
+            } catch (error) {
+                console.error('KV Decr error:', error);
+                throw error;
+            }
+        }
+
+        async function puterKvFlush() {
+            try {
+                const response = await puter.kv.flush();
+                return response;
+            } catch (error) {
+                console.error('KV Flush error:', error);
+                throw error;
+            }
+        }
+
+        // File System functions
+        async function puterFsWrite(path, data, options = {}) {
+            try {
+                const response = await puter.fs.write(path, data, options);
+                return response;
+            } catch (error) {
+                console.error('FS Write error:', error);
+                throw error;
+            }
+        }
+
+        async function puterFsRead(path, options = {}) {
+            try {
+                const response = await puter.fs.read(path, options);
+                return response;
+            } catch (error) {
+                console.error('FS Read error:', error);
+                throw error;
+            }
+        }
+
+        async function puterFsMkdir(path, options = {}) {
+            try {
+                const response = await puter.fs.mkdir(path, options);
+                return response;
+            } catch (error) {
+                console.error('FS Mkdir error:', error);
+                throw error;
+            }
+        }
+
+        async function puterFsReaddir(path) {
+            try {
+                const response = await puter.fs.readdir(path);
+                return response;
+            } catch (error) {
+                console.error('FS Readdir error:', error);
+                throw error;
+            }
+        }
+
+        async function puterFsDelete(path, options = {}) {
+            try {
+                const response = await puter.fs.delete(path, options);
+                return response;
+            } catch (error) {
+                console.error('FS Delete error:', error);
+                throw error;
+            }
+        }
+
+        async function puterFsMove(source, destination, options = {}) {
+            try {
+                const response = await puter.fs.move(source, destination, options);
+                return response;
+            } catch (error) {
+                console.error('FS Move error:', error);
+                throw error;
+            }
+        }
+
+        async function puterFsCopy(source, destination, options = {}) {
+            try {
+                const response = await puter.fs.copy(source, destination, options);
+                return response;
+            } catch (error) {
+                console.error('FS Copy error:', error);
+                throw error;
+            }
+        }
+
+        async function puterFsRename(path, newName) {
+            try {
+                const response = await puter.fs.rename(path, newName);
+                return response;
+            } catch (error) {
+                console.error('FS Rename error:', error);
+                throw error;
+            }
+        }
+
+        async function puterFsStat(path) {
+            try {
+                const response = await puter.fs.stat(path);
+                return response;
+            } catch (error) {
+                console.error('FS Stat error:', error);
+                throw error;
+            }
+        }
+
+        async function puterFsSpace() {
+            try {
+                const response = await puter.fs.space();
+                return response;
+            } catch (error) {
+                console.error('FS Space error:', error);
+                throw error;
+            }
+        }
+
+        // Authentication functions
         async function puterAuthSignIn() {
             try {
                 const response = await puter.auth.signIn();

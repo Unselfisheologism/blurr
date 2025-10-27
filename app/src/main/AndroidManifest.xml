@@ -51,8 +51,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data
                     android:scheme="https"
-                    android:host="black-radius-341415.firebaseapp.com"
-                    android:pathPrefix="/__/auth/links" />
+                    android:host="puter.com"
+                    android:pathPrefix="/auth" />
             </intent-filter>
         </activity>
         <activity android:name=".ChatActivity" android:exported="true" android:label="@string/app_name" android:theme="@style/Theme.Blurr" android:screenOrientation="portrait" />
@@ -89,6 +89,13 @@
         
         <activity android:name=".MomentsActivity" android:exported="false" android:label="Moments" android:theme="@style/Theme.Blurr" android:screenOrientation="portrait" />
         
+        <!-- Puter.js Full Test Activity -->
+        <activity android:name=".activities.PuterFullTestActivity" 
+            android:exported="false" 
+            android:label="Puter Full Test" 
+            android:theme="@style/Theme.Blurr" 
+            android:screenOrientation="portrait" />
+
         <!-- Puter.js Authentication Activity -->
         <activity android:name=".activities.PuterAuthActivity" 
             android:exported="true" 

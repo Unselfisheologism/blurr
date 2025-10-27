@@ -8,26 +8,24 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.blurr.voice.data.TaskHistoryItem
 import com.blurr.voice.utilities.Logger
-import com.google.firebase.Firebase
-import com.google.firebase.Timestamp
-import com.google.firebase.auth.auth
-import com.google.firebase.firestore.firestore
+import com.blurr.voice.managers.PuterManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 class MomentsActivity : BaseNavigationActivity() {
     
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyState: LinearLayout
     private lateinit var adapter: MomentsAdapter
-    private val db = Firebase.firestore
-    private val auth = Firebase.auth
+    private lateinit var puterManager: PuterManager
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_moments_content)
+        
+        // Initialize puter manager
+        puterManager = PuterManager.getInstance(this)
         
         // Setup back button
         findViewById<TextView>(R.id.back_button).setOnClickListener {
@@ -48,44 +46,24 @@ class MomentsActivity : BaseNavigationActivity() {
     }
     
     private fun loadTaskHistory() {
-        val currentUser = auth.currentUser
-        if (currentUser == null) {
+        if (!puterManager.isUserSignedIn()) {
             showEmptyState()
             return
         }
         
         CoroutineScope(Dispatchers.Main).launch {
             try {
-                val document = db.collection("users").document(currentUser.uid).get().await()
-                if (document.exists()) {
-                    val taskHistoryData = document.get("taskHistory") as? List<Map<String, Any>>
-                    if (taskHistoryData != null && taskHistoryData.isNotEmpty()) {
-                        val taskHistory = taskHistoryData.mapNotNull { taskData ->
-                            try {
-                                TaskHistoryItem(
-                                    task = taskData["task"] as? String ?: "",
-                                    status = taskData["status"] as? String ?: "",
-                                    startedAt = taskData["startedAt"] as? Timestamp,
-                                    completedAt = taskData["completedAt"] as? Timestamp,
-                                    success = taskData["success"] as? Boolean,
-                                    errorMessage = taskData["errorMessage"] as? String
-                                )
-                            } catch (e: Exception) {
-                                Logger.e("MomentsActivity", "Error parsing task history item", e)
-                                null
-                            }
-                        }
-                        
-                        // Sort by startedAt in descending order (most recent first)
-                        val sortedTaskHistory = taskHistory.sortedByDescending { 
-                            it.startedAt?.toDate() ?: java.util.Date(0)
-                        }
-                        
-                        if (sortedTaskHistory.isNotEmpty()) {
-                            showTaskHistory(sortedTaskHistory)
-                        } else {
-                            showEmptyState()
-                        }
+                // Get task history from puter.js key-value store
+                val taskHistory = puterManager.getTaskHistory()
+                
+                if (taskHistory.isNotEmpty()) {
+                    // Sort by startedAt in descending order (most recent first)
+                    val sortedTaskHistory = taskHistory.sortedByDescending { 
+                        it.startedAt ?: 0
+                    }
+                    
+                    if (sortedTaskHistory.isNotEmpty()) {
+                        showTaskHistory(sortedTaskHistory)
                     } else {
                         showEmptyState()
                     }

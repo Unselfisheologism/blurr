@@ -10,14 +10,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization") version "2.2.10"
 }
 
-// Conditionally apply Google Services plugin based on a project property
-if (!project.hasProperty("skipGoogleServices") || project.property("skipGoogleServices") != "true") {
-    apply(plugin = "com.google.gms.google-services")
-    apply(plugin = "com.google.firebase.crashlytics")
-} else {
-    println("Skipping Google Services and Firebase Crashlytics plugins as requested")
-}
-
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
@@ -35,19 +27,6 @@ android {
     namespace = "com.blurr.voice"
     compileSdk = 35
 
-    // Common API keys and configuration - extracted to avoid duplication
-    val apiKeys = localProperties.getProperty("GEMINI_API_KEYS") ?: ""
-    val tavilyApiKeys = localProperties.getProperty("TAVILY_API") ?: ""
-    val mem0ApiKey = localProperties.getProperty("MEM0_API") ?: ""
-    val picovoiceApiKey = localProperties.getProperty("PICOVOICE_ACCESS_KEY") ?: ""
-    val googleTtsApiKey = localProperties.getProperty("GOOGLE_TTS_API_KEY") ?: ""
-    val googlecloudGatewayPicovoice = localProperties.getProperty("GCLOUD_GATEWAY_PICOVOICE_KEY") ?: ""
-    val googlecloudGatewayURL = localProperties.getProperty("GCLOUD_GATEWAY_URL") ?: ""
-    val googlecloudProxyURL = localProperties.getProperty("GCLOUD_PROXY_URL") ?: ""
-    val googlecloudProxyURLKey = localProperties.getProperty("GCLOUD_PROXY_URL_KEY") ?: ""
-    val revenueCatSDK = localProperties.getProperty("REVENUE_CAT_PUBLIC_URL") ?: ""
-    val revenueCatApiKey = localProperties.getProperty("REVENUECAT_API_KEY") ?: ""
-
     val debugSha1 = "D0:A1:49:03:FD:B5:37:DF:B5:36:51:B1:66:AE:70:11:E2:59:08:33"
 
     defaultConfig {
@@ -60,26 +39,19 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
         // Common build config fields - applies to all build types
-        buildConfigField("String", "GEMINI_API_KEYS", "\"$apiKeys\"")
-        buildConfigField("String", "TAVILY_API", "\"$tavilyApiKeys\"")
-        buildConfigField("String", "MEM0_API", "\"$mem0ApiKey\"")
-        buildConfigField("String", "PICOVOICE_ACCESS_KEY", "\"$picovoiceApiKey\"")
+        
         buildConfigField("boolean", "ENABLE_DIRECT_APP_OPENING", "true")
         buildConfigField("boolean", "SPEAK_INSTRUCTIONS", "true")
-        buildConfigField("String", "GOOGLE_TTS_API_KEY", "\"$googleTtsApiKey\"")
-        buildConfigField("String", "GCLOUD_GATEWAY_PICOVOICE_KEY", "\"$googlecloudGatewayPicovoice\"")
-        buildConfigField("String", "GCLOUD_GATEWAY_URL", "\"$googlecloudGatewayURL\"")
-        buildConfigField("String", "GCLOUD_PROXY_URL", "\"$googlecloudProxyURL\"")
-        buildConfigField("String", "GCLOUD_PROXY_URL_KEY", "\"$googlecloudProxyURLKey\"")
+        
+        
+        
+        
         buildConfigField("boolean", "ENABLE_LOGGING", "true")
 
     }
 
     buildTypes {
         release {
-            firebaseCrashlytics {
-                nativeSymbolUploadEnabled = true
-            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -117,7 +89,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.appcompat)
-    implementation(libs.generativeai)
+    
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -135,30 +107,12 @@ dependencies {
     // https://mvnrepository.com/artifact/androidx.test.uiautomator/uiautomator
     implementation("androidx.test.uiautomator:uiautomator:2.3.0")
 
-    // Porcupine Wake Word Engine
-    implementation("ai.picovoice:porcupine-android:3.0.2")
-
-    implementation("com.google.firebase:firebase-analytics")
-
+    
+    
     // Room database dependencies
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
-    // Import the Firebase BoM
-    implementation(platform(libs.firebase.bom))
-
-    implementation(libs.firebase.config)
-
-
-    // Add the dependency for the Firebase Authentication library
-    implementation(libs.firebase.auth)
-
-    // Add the dependency for the Google Play services library
-    implementation(libs.play.services.auth)
-
-    implementation("com.google.firebase:firebase-analytics")
-    implementation("com.google.firebase:firebase-crashlytics-ndk")
-    implementation(libs.firebase.firestore)
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     
 }

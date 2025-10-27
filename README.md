@@ -1,132 +1,127 @@
-# 🐼 Panda: Your Personal AI Phone Operator  
-**You touch grass. I'll touch your glass.**  
-[![Join Discord](https://img.shields.io/badge/Join%20Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/b2hxFNXvWk)
-<a href='https://play.google.com/store/apps/details?id=com.blurr.voice&hl=en_US&pcampaignid=pcampaignidMKT-Other-global-all-co-prtnr-py-PartBadge-Mar2515-1'><img alt='Get it on Google Play' src='https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png' width=250/></a>
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Ayush0Chaudhary/blurr)
----
+# Puter.js Android Integration
 
-# Demos:
+This repository contains a complete implementation of the Puter.js SDK for Android applications. The integration provides access to all Puter.js features including AI capabilities, file system operations, key-value storage, and authentication.
 
-#### Explaining all the triggers of Panda
- [![Watch the video](https://img.youtube.com/vi/IDvuqmPyKZs/hqdefault.jpg)](https://www.youtube.com/embed/IDvuqmPyKZs)
+## Features Implemented
 
-#### Sending Welcome message to all the new Connections on Linkedin
- [![Watch the video](https://img.youtube.com/vi/JO_EWFYJJjA/hqdefault.jpg)](https://www.youtube.com/embed/JO_EWFYJJjA)
+### AI Capabilities
+- **Chat**: Natural language conversations with streaming support
+- **Text-to-Image**: Generate images from text descriptions
+- **Image-to-Text**: Extract text from images (OCR)
+- **Text-to-Speech**: Convert text to spoken audio
 
-#### 5 task demo: 
-https://github.com/user-attachments/assets/cf76bb00-2bf4-4274-acad-d9f4c0d47188
+### File System Operations
+- **Write**: Create and modify files
+- **Read**: Retrieve file contents
+- **Directory Management**: Create, list, and navigate directories
+- **File Operations**: Move, copy, rename, and delete files
+- **Metadata**: Get file statistics and storage space information
 
+### Key-Value Storage
+- **Set/Get**: Store and retrieve key-value pairs
+- **Increment/Decrement**: Atomic operations on numeric values
+- **List**: Enumerate all keys with optional value retrieval
+- **Delete**: Remove individual keys or flush all data
 
-**Panda** is a proactive, on-device AI agent for Android that autonomously understands natural language commands and operates your phone's UI to achieve them. Inspired by the need to make modern technology more accessible, Panda acts as your personal operator, capable of handling complex, multi-step tasks across different applications.
+### Authentication
+- **Sign In/Out**: Secure user authentication
+- **Session Management**: Check authentication status
+- **User Information**: Retrieve user profile data
 
-[![Project Status: WIP](https://img.shields.io/badge/project%20status-wip-yellow.svg)](https://wip.vost.pt/)
-[![License: Personal Use](https://img.shields.io/badge/License-Personal%20Use%20Only-red.svg)](./LICENSE)
-[![Kotlin Version](https://img.shields.io/badge/Kotlin-1.9.22-7F52FF.svg?logo=kotlin)](https://kotlinlang.org)
+## Architecture
 
-## Core Capabilities
+The implementation follows a layered architecture:
 
-* 🧠 **Intelligent UI Automation:** Panda sees the screen, understands the context of UI elements, and performs actions like tapping, swiping, and typing to navigate apps and complete tasks.
-* 📢 **High Qaulity voice:** Panda have high quality voice by GCS's Chirp  
-* 💾 **Persistent & Personalized local Memory:** ⚠️ **Temporarily Disabled** - Panda memory is turned off as of yet. Memory functionality will be restored in a future update.
+1. **Service Layer**: `PuterService` manages the persistent WebView that runs Puter.js
+2. **Bridge Layer**: `PuterBridge` handles communication between native Android code and JavaScript
+3. **API Layer**: `PuterManager` provides a high-level, easy-to-use API for all features
+4. **JavaScript Layer**: HTML file with all Puter.js bridge functions
 
-## Architecture Overview
+## Usage
 
-Panda is built on a sophisticated multi-agent system written entirely in Kotlin. This architecture separates responsibilities, allowing for more complex and reliable reasoning.
-
-* **Eyes & Hands (The Actuator):** The **Android Accessibility Service** serves as the agent's physical connection to the device, providing the low-level ability to read the screen element hierarchy and programmatically perform touch gestures.
-* **The Brain (The LLM):** All high-level reasoning, planning, and analysis are powered by **LLM** models. This is where decisions are made.
-* **The Agent:**
-    * **Operator:** This is executor with Notepad.
-
-
-## 🚀 Getting Started
-
-### Prerequisites
-* Android Studio (latest version recommended)
-* An Android device or emulator with API level 26+
-* Some Gemini keys, sample ENV
-```python
-# the name of these keys donot mean you need google cloud, you can use any servers that can accept requests, i will improve the developer experience in the future by making openapi compatible
-GCLOUD_PROXY_URL=<url-of-any-backend-that-accept-responses-like-below-payload>
-GCLOUD_PROXY_URL_KEY=<any-password-you-wanna-set-or-leave-empty>
+### Initialization
+```kotlin
+val puterManager = PuterManager.getInstance(context)
+puterManager.initialize()
 ```
-`payload`
-```
-{
-  "modelName": "model-name",
-  "messages": [
-    {
-      "role": "user",
-      "parts": [
-        {
-          "text": "Hello, what can you do?"
-        }
-      ]
-    },
-    {
-      "role": "model",
-      "parts": [
-        {
-          "text": "I can help you with a variety of tasks. What do you need assistance with today?"
-        }
-      ]
+
+### Chat Example
+```kotlin
+// Basic chat
+puterManager.chat("Hello, how are you?")
+    .thenApply { response ->
+        // Handle response
     }
-  ]
+    .exceptionally { error ->
+        // Handle error
+    }
+
+// Streaming chat
+puterManager.chatStream("Tell me a story") { chunk ->
+    // Handle each chunk as it arrives
+}.thenApply { completeResponse ->
+    // Handle complete response
 }
 ```
-or
+
+### File System Example
+```kotlin
+// Write a file
+puterManager.fsWrite("hello.txt", "Hello, world!")
+
+// Read a file
+puterManager.fsRead("hello.txt")
+    .thenApply { content ->
+        // Handle content
+    }
 ```
-//you can also add gemini keys to play around
 
-GEMINI_API_KEYS=
+### Key-Value Example
+```kotlin
+// Set a value
+puterManager.kvSet("username", "john_doe")
+
+// Get a value
+puterManager.kvGet("username")
+    .thenApply { value ->
+        // Handle value
+    }
 ```
 
+## Security
 
+- Authentication uses Chrome Custom Tabs for secure sign-in
+- All data is stored in the user's secure Puter account
+- Communication between layers is properly secured
+- Each app operates in its own sandboxed environment
 
+## Testing
 
-### Installation
+A comprehensive test suite is included in `PuterFullTestActivity` that validates all implemented features.
 
-1.  **Clone the repository:**
-    ```bash
-    git clone [https://github.com/ayush0chaudhary/blurr.git](https://github.com/ayush0chaudhary/blurr.git)
-    cd blurr
-    ```
+## Documentation
 
-2.  **Build & Run:**
-    * Open the project in Android Studio.
-    * Let Gradle sync all the dependencies.
-    * Run the app on your selected device or emulator.
+Detailed documentation is available in the `docs` folder:
+- [Implementation Summary](docs/puter-implementation-summary.md)
+- [Error Handling Guide](docs/puter-error-handling.md)
+- [Key-Value Implementation](docs/puter-kv-implementation.md)
+- [Test Plan](docs/puter-implementation-test-plan.md)
 
-3.  **Enable Accessibility Service:**
-    * On the first run, the app will prompt you to grant Accessibility permission.
-    * Click "Grant Access" and enable the "Panda" service in your phone's settings. This is required for the agent to see and control the screen.
+## Requirements
 
-## 🗺️ What's Next for Panda (Roadmap)
+- Android API level 21+
+- Internet connectivity
+- Puter.js account for users
 
-Panda is currently a powerful proof-of-concept, and the roadmap is focused on making it a truly indispensable assistant.
+## Dependencies
 
-* [ ] **NOT UPDATED:** List not updated
+- `androidx.browser:browser` for Chrome Custom Tabs
+- Android WebView component
 
-## 🤝 Contributing
+## Contributing
 
-Contributions are welcome! If you have ideas for new features or improvements, feel free to open an issue or submit a pull request.
+Contributions are welcome! Please read the documentation and follow the established patterns.
 
-## 📜 License
+## License
 
-This project is licensed under a Personal Use License - see the [LICENSE](LICENSE) file for details.
-
-**Personal & Educational Use:** Free to use, modify, and distribute for personal, educational, and non-commercial purposes.
-
-**Commercial Use:** Requires a separate commercial license. Please contact Panda AI for commercial licensing terms.
-
-### A small video to help you understand what the project is about. 
-https://github.com/user-attachments/assets/b577072e-2f7f-42d2-9054-3a11160cf87d
-
-Write you api key in in local.properties, more keys you use, better is the speed 😉
-
-# View logs in real-time
-adb logcat | grep GeminiApi
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Ayush0Chaudhary/blurr&type=Timeline)](https://www.star-history.com/#Ayush0Chaudhary/blurr&Timeline)
+This implementation is provided as open source for educational and demonstration purposes.

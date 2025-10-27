@@ -16,8 +16,9 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
 import com.blurr.voice.BuildConfig
-import com.blurr.voice.api.GoogleTts
+
 import com.blurr.voice.api.TTSVoice
+import com.blurr.voice.managers.PuterManager
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -356,6 +357,12 @@ class TTSManager private constructor(private val context: Context) : TextToSpeec
     }
     
     /**
+    /**
+     * Synthesizes speech using Puter.js TTS functionality
+     */
+    private suspend fun puterTtsSynthesize(text: String, voice: TTSVoice): ByteArray {
+        return PuterManager.getInstance(context).synthesizeTextToSpeech(text)
+    }
      * Smart queue-based playback that starts playing immediately while preloading in background
      */
     private suspend fun playWithSmartQueue(textChunks: List<String>, selectedVoice: TTSVoice) {
@@ -365,7 +372,7 @@ class TTSManager private constructor(private val context: Context) : TextToSpeec
         // Start preloading the first chunk immediately
         val firstChunk = textChunks[0].trim()
         val firstAudioData = getCachedAudio(firstChunk, selectedVoice) ?: try {
-            GoogleTts.synthesize(firstChunk, selectedVoice).also { audioData ->
+            puterTtsSynthesize(firstChunk, selectedVoice).also { audioData ->
                 cacheAudio(firstChunk, audioData, selectedVoice)
             }
         } catch (e: Exception) {
@@ -384,7 +391,7 @@ class TTSManager private constructor(private val context: Context) : TextToSpeec
                 val chunk = textChunks[i].trim()
                 if (chunk.isNotEmpty()) {
                     try {
-                        val audioData = getCachedAudio(chunk, selectedVoice) ?: GoogleTts.synthesize(chunk, selectedVoice).also { audioData ->
+                        val audioData = getCachedAudio(chunk, selectedVoice) ?: puterTtsSynthesize(chunk, selectedVoice).also { audioData ->
                             cacheAudio(chunk, audioData, selectedVoice)
                         }
                         synchronized(queueMutex) {
@@ -539,7 +546,7 @@ class TTSManager private constructor(private val context: Context) : TextToSpeec
     private suspend fun speakChunk(chunk: String, selectedVoice: TTSVoice) {
         try {
             // Check cache first
-            val audioData = getCachedAudio(chunk, selectedVoice) ?: GoogleTts.synthesize(chunk, selectedVoice).also { audioData ->
+            val audioData = getCachedAudio(chunk, selectedVoice) ?: puterTtsSynthesize(chunk, selectedVoice).also { audioData ->
                 cacheAudio(chunk, audioData, selectedVoice)
             }
             

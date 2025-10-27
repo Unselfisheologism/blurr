@@ -3,26 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy for Panda</title>
+    <title>Panda Privacy Policy</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: Arial, sans-serif;
             line-height: 1.6;
-            margin: 0 auto;
-            max-width: 800px;
-            padding: 20px;
             color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
         }
         h1, h2, h3 {
-            font-weight: 600;
+            color: #2c3e50;
         }
-        code {
-            background-color: #f6f8fa;
-            padding: 3px 5px;
+        h1 {
+            text-align: center;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        ul, ol {
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        p {
+            margin-bottom: 15px;
+        }
+        .section {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 20px;
             border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         a {
-            color: #0366d6;
+            color: #3498db;
             text-decoration: none;
         }
         a:hover {
@@ -31,64 +48,87 @@
     </style>
 </head>
 <body>
-
-<h1>Privacy Policy for Panda</h1>
-<p><strong>Effective Date:</strong> August 9, 2025</p>
-<p>Thank you for using Panda ("the App"), your personal AI phone operator. This Privacy Policy explains what information we collect, how we use and share it, and your choices regarding your information.</p>
-<h2>1. Information We Collect</h2>
-<p>To function as an on-device AI agent, Panda requires access to certain information. We are committed to transparency and only collecting what is necessary to provide and improve the service.</p>
-<p><strong>a) Screen Content (via Accessibility Service)</strong><br>
-    To understand your requests and operate your phone's user interface, the app uses the Android Accessibility Service. This service allows Panda to collect:</p>
-<ul>
-    <li><strong>UI Element Information:</strong> Text, content descriptions, and resource IDs of elements on your screen.</li>
-    <li><strong>Screen Structure:</strong> The hierarchical layout of your screen (as XML data).</li>
-    <li><strong>Screenshots:</strong> The app has the capability to take screenshots to provide visual context to its AI models.</li>
-    <li><strong>This information is collected to understand the current state of your device to perform actions like tapping, swiping, and typing on your behalf.</strong></li>
-</ul>
-<p><strong>b) Audio Information (via Microphone Permission)</strong><br>
-    The app requires the <code>RECORD_AUDIO</code> permission to:</p>
-<ul>
-    <li><strong>Process Voice Commands:</strong> When you speak a command, the audio is processed to convert it into text.</li>
-    <li><strong>Wake Word Detection:</strong> The app listens for the "Panda" wake word to activate. This processing is done <strong>entirely on your device</strong> by the Picovoice Porcupine engine; your ambient audio is not sent to the cloud for wake word detection.</li>
-</ul>
-<p><strong>c) User Instructions &amp; Conversations</strong><br>
-    We collect the text of your typed or spoken commands and the history of your conversation with Panda during a session to understand your goals and provide relevant responses.</p>
-<p><strong>d) Installed Applications Information</strong><br>
-    The app uses the <code>QUERY_ALL_PACKAGES</code> permission to get a list of your installed applications. This information is used solely to identify apps by name so Panda can open them for you more quickly and reliably.</p>
-<p><strong>e) User-Created Memories (On-Device Storage)</strong></p>
-<ul>
-    <li><strong>Automatic Extraction:</strong> Facts may be extracted from your conversations to personalize your experience (e.g., remembering your brother's name if you mention it). This analysis is performed by Google's Gemini AI.</li>
-    <li><strong>Manual Creation:</strong> You can manually add facts in the "My Memories" section.</li>
-    <li><strong>All extracted and created memories are stored in a secure, private database on your device.</strong> They are not accessible by other applications.</li>
-</ul>
-<p><strong>f) Unique User Identifier</strong><br>
-    The app generates a random, anonymous Unique User ID (UUID) that is stored on your device. This helps in managing your memories and sessions without using any personal identifiers like your name or email.</p>
-<p><strong>g) Log Data for Debugging</strong><br>
-    To diagnose and fix issues, we log some interaction data with our third-party AI services. This data is sent to Google Firebase Firestore and includes the AI prompt, the AI's response, the AI model used, and success/error status. This log data is not linked to your personal identity.</p>
-<h2>2. How We Use Your Information</h2>
-<ul>
-    <li><strong>To Provide Core Functionality:</strong> To understand your commands and automate actions on your device.</li>
-    <li><strong>To Personalize Your Experience:</strong> To use your stored memories to provide more context-aware and helpful responses.</li>
-    <li><strong>To Improve the Service:</strong> To analyze anonymized log data to debug issues and enhance the app's performance and reliability.</li>
-</ul>
-<h2>3. Data Sharing and Third-Party Services</h2>
-<p>Panda is a complex AI system and relies on a few specialized third-party services to function. We do not sell your data.</p>
-<ul>
-    <li><strong>Google (Gemini AI Models):</strong> Your conversations, screen content (XML or screenshots), and text from new memories are sent to Google's Generative AI services for processing, reasoning, and analysis. This is essential for the AI to understand context and generate responses. Your data is subject to <a href="https://policies.google.com/privacy">Google's Privacy Policy</a>.</li>
-    <li><strong>Google (Firebase Firestore):</strong> Anonymized log data of AI interactions is stored in Google's Firestore for debugging and service improvement, as described in section 1(g).</li>
-    <li><strong>Tavily (Search API):</strong> If a task requires web research, a search query derived from your instruction is sent to the Tavily Search API to find information. This is subject to <a href="https://tavily.com/privacy">Tavily's Privacy Policy</a>.</li>
-    <li><strong>Picovoice (Porcupine Wake Word):</strong> As stated in section 1(b), wake word detection is processed <strong>100% on your device</strong>. No audio is sent to Picovoice's servers.</li>
-</ul>
-<h2>4. Your Control and Choices</h2>
-<p>You are in control of your data.</p>
-<ul>
-    <li><strong>Managing Memories:</strong> You can view, add, and permanently delete any or all of your memories at any time from the "My Memories" screen within the app.</li>
-    <li><strong>Revoking Permissions:</strong> You can revoke the Accessibility Service, Microphone, and Overlay permissions at any time through your device's Android Settings. Please note that revoking these permissions will limit or disable Panda's core functionality.</li>
-</ul>
-<h2>5. Changes to This Privacy Policy</h2>
-<p>We may update this policy from time to time. We will notify you of any changes by posting the new policy in this section of the app.</p>
-<h2>6. Contact Us</h2>
-<p>If you have any questions about this Privacy Policy, please contact us at: <strong>ayush0000ayush@gmail.com</strong></p>
-
+    <h1>Panda Privacy Policy</h1>
+    
+    <div class="section">
+        <p><strong>Last Updated:</strong> October 26, 2025</p>
+        
+        <p>This Privacy Policy describes how Panda ("we", "our", or "us") collects, uses, and shares your information when you use our Android application ("Panda" or the "App").</p>
+        
+        <p>We are committed to protecting your privacy. By using Panda, you consent to the practices described in this policy.</p>
+    </div>
+    
+    <div class="section">
+        <h2>1. Information We Collect</h2>
+        
+        <p><strong>a) Information You Provide</strong><br>
+        We do not require you to create an account or provide personal information to use the core features of Panda. However, if you choose to sign in with Puter.js for enhanced features, we will collect your Puter.js account information as described in their <a href="https://puter.com/privacy">Privacy Policy</a>.</p>
+        
+        <p><strong>b) Voice Data</strong><br>
+        When you use Panda's voice features, we temporarily process your voice input to convert it to text for command interpretation. This audio data is not stored on our servers or shared with third parties beyond what is necessary for the voice recognition service.</p>
+        
+        <p><strong>c) Device Information</strong><br>
+        We collect general device information such as your Android version, device model, and app version to ensure compatibility and improve our service.</p>
+        
+        <p><strong>d) Usage Data</strong><br>
+        We collect anonymous usage statistics such as feature usage frequency and session duration to understand how people interact with Panda and improve the user experience.</p>
+        
+        <p><strong>e) Task Execution Data</strong><br>
+        To perform tasks on your device, we temporarily access the information necessary for each specific task (e.g., contact names for messaging, app names for launching). This data is processed locally and not stored.</p>
+        
+        <p><strong>f) Screen Content</strong><br>
+        When you request screen analysis, we capture and process the visual content of your screen to understand context and provide relevant responses. This data is processed locally and not stored.</p>
+        
+        <p><strong>g) Log Data for Debugging</strong><br>
+        To diagnose and fix issues, we log some interaction data with our third-party AI services. This data is sent to Puter.js key-value store and includes the AI prompt, the AI's response, the AI model used, and success/error status. This log data is not linked to your personal identity.</p>
+        
+        <h2>2. How We Use Your Information</h2>
+        
+        <p>We use the collected information for the following purposes:</p>
+        
+        <ul>
+            <li><strong>To Provide and Maintain Our Service:</strong> Including processing voice commands, executing tasks, and analyzing screen content as requested.</li>
+            <li><strong>To Improve Our Service:</strong> Using anonymized usage data and debugging logs to enhance app performance, fix bugs, and develop new features.</li>
+            <li><strong>To Communicate With You:</strong> Sending important updates about the app, though we currently do not collect email addresses for direct marketing.</li>
+            <li><strong>To Comply With Legal Obligations:</strong> Retaining certain data where required by law.</li>
+        </ul>
+        
+        <h2>3. Third-Party Services</h2>
+        
+        <p>Panda integrates with several third-party services to deliver its functionality:</p>
+        
+        <ul>
+            <li><strong>Google (Gemini AI Models):</strong> Your conversations, screen content (XML or screenshots), and text from new memories are sent to Google's Generative AI services for processing, reasoning, and analysis. This is essential for the AI to understand context and generate responses. Your data is subject to <a href="https://policies.google.com/privacy">Google's Privacy Policy</a>.</li>
+            <li><strong>Puter.js (Key-Value Store):</strong> Anonymized log data of AI interactions is stored in Puter.js key-value store for debugging and service improvement, as described in section 1(g).</li>
+            <li><strong>Tavily (Search API):</strong> If a task requires web research, a search query derived from your instruction is sent to the Tavily Search API to find information. This is subject to <a href="https://tavily.com/privacy">Tavily's Privacy Policy</a>.</li>
+            <li><strong>Puter.js (Authentication):</strong> If you choose to sign in, your authentication is handled by Puter.js. This is subject to <a href="https://puter.com/privacy">Puter.js's Privacy Policy</a>.</li>
+        </ul>
+        
+        <h2>4. Data Sharing and Disclosure</h2>
+        
+        <p>We do not sell, trade, or rent your personal information to third parties. We may share anonymized, aggregated data with partners for research and improvement purposes.</p>
+        
+        <p>We may disclose your information if required by law or to protect the rights, property, or safety of Panda, our users, or others.</p>
+        
+        <h2>5. Data Retention</h2>
+        
+        <p>We retain debugging logs and usage data for a period of 90 days, after which it is automatically deleted. Personal information you provide (if any) is retained only as long as necessary to provide our services.</p>
+        
+        <h2>6. Children's Privacy</h2>
+        
+        <p>Panda is not intended for use by children under the age of 13. We do not knowingly collect personal information from children under 13. If we become aware that we have collected such information, we will promptly delete it.</p>
+        
+        <h2>7. Changes to This Privacy Policy</h2>
+        
+        <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page and updating the "Last Updated" date.</p>
+        
+        <h2>8. Contact Us</h2>
+        
+        <p>If you have any questions about this Privacy Policy, please contact us at:</p>
+        
+        <p>Email: ayush0000ayush@gmail.com</p>
+        
+        <p>By using Panda, you acknowledge that you have read and understood this Privacy Policy and agree to its terms.</p>
+    </div>
 </body>
 </html>
