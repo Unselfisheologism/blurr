@@ -110,8 +110,6 @@ class PuterService : Service() {
                     javaScriptCanOpenWindowsAutomatically = true
                     // Enable DOM storage for better persistence
                     domStorageEnabled = true
-                    // Enable cache for better performance
-                    setAppCacheEnabled(true)
                     // Enable database for better persistence
                     databaseEnabled = true
                     // Enable cache mode
