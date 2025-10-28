@@ -77,9 +77,12 @@ class PuterService : Service() {
             // Send the token to the WebView to complete authentication
             webView?.post {
                 val jsCode = """
-                    if (window.puter && window.puter.auth) {
+                    if (window.handleAuthCallback) {
                         // Complete the authentication in the Puter.js context
-                        window.puter.auth.handleAuthCallback('$token');
+                        window.handleAuthCallback('$token');
+                    } else if (window.puter && window.puter.auth) {
+                        // Alternative method if handleAuthCallback is not available
+                        console.log("handleAuthCallback not available, trying direct auth completion");
                     }
                 """.trimIndent()
                 webView?.evaluateJavascript(jsCode, null)
@@ -130,15 +133,22 @@ class PuterService : Service() {
                         }
                         
                         // Intercept Puter.js authentication URL and redirect to Chrome Custom Tabs
+                        // Mobile auth URL: https://puter.com/action/sign-in?embedded_in_popup=true&msg_id=1
+                        // Desktop auth URL: https://puter.com/?embedded_in_popup=true&request_auth=true
                         if (url?.contains("puter.com/auth") == true || 
                             url?.contains("puter.com/login") == true || 
                             url?.contains("puter.com/action/sign-in") == true ||
-                            url?.contains("puter.com/?embedded_in_popup=true") == true) {
+                            url?.contains("puter.com/?embedded_in_popup=true") == true ||
+                            url?.contains("puter.com/action/auth") == true ||
+                            (url?.contains("puter.com") == true && 
+                             (url?.contains("embedded_in_popup=true") == true || 
+                              url?.contains("request_auth=true") == true ||
+                              url?.contains("msg_id=") == true))) {
                             Log.d(TAG, "Opening auth in custom tab: $url")
                             openAuthInCustomTab(url)
                             return true
                         }
-
+                        
                         return false
                     }
 
@@ -147,6 +157,18 @@ class PuterService : Service() {
                         Log.d(TAG, "Page finished loading: $url")
                         // Inject Android interface after page loads
                         view?.addJavascriptInterface(AndroidInterface(), "AndroidInterface")
+                    }
+                    
+                    override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                        super.onPageStarted(view, url, favicon)
+                        Log.d(TAG, "Page started loading: $url")
+                        
+                        // Check if this is an authentication-related page that might redirect
+                        if (url?.contains("puter.com/auth") == true || 
+                            url?.contains("puter.com/login") == true || 
+                            url?.contains("puter.com/action/sign-in") == true) {
+                            Log.d(TAG, "Authentication page loaded: $url")
+                        }
                     }
                     
                     override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
@@ -172,7 +194,11 @@ class PuterService : Service() {
                             if (popupUrl != null && (popupUrl.contains("puter.com/auth") || 
                                     popupUrl.contains("puter.com/login") || 
                                     popupUrl.contains("puter.com/action/sign-in") ||
-                                    popupUrl.contains("puter.com/?embedded_in_popup=true"))) {
+                                    popupUrl.contains("puter.com/?embedded_in_popup=true") ||
+                                    (popupUrl.contains("puter.com") && 
+                                     (popupUrl.contains("embedded_in_popup=true") || 
+                                      popupUrl.contains("request_auth=true") ||
+                                      popupUrl.contains("msg_id="))))) {
                                 Log.d(TAG, "Opening popup auth in custom tab: $popupUrl")
                                 openAuthInCustomTab(popupUrl)
                                 return true
@@ -220,19 +246,22 @@ class PuterService : Service() {
         // Extract token or auth data from the redirect URL
         val token = extractTokenFromUrl(redirectUrl)
         Log.d(TAG, "Extracted token: $token")
-        authCallback?.invoke(token)
-        authCallback = null
         
         // Notify the sign in callback that authentication was successful
         signInCallback?.invoke(true)
         signInCallback = null
+        
+        // Also send a broadcast to handle the authentication success
+        val intent = Intent("AUTH_SUCCESS")
+        intent.putExtra("token", token)
+        sendBroadcast(intent)
     }
 
     private fun extractTokenFromUrl(url: String): String? {
         // Extract token from URL parameters
         val uri = android.net.Uri.parse(url)
         return uri.getQueryParameter("token") ?: uri.getQueryParameter("auth_token") ?: 
-               uri.getQueryParameter("access_token")
+               uri.getQueryParameter("access_token") ?: uri.getQueryParameter("auth_code")
     }
 
     fun executePuterChat(query: String, callback: (String?) -> Unit) {
@@ -463,7 +492,7 @@ class PuterService : Service() {
             val jsCode = """
                 puterAuthSignIn()
                     .then(response => {
-                        console.log("Sign in successful", response);
+                        console.log("Sign in initiated successfully", response);
                         if (window.AndroidInterface) {
                             window.AndroidInterface.onAuthSuccess(JSON.stringify(response));
                         }

@@ -252,53 +252,16 @@
                 // The actual authentication will happen in Chrome Custom Tabs
                 console.log("Triggering Puter authentication...");
                 
-                // The puter.auth.signIn() will try to open a popup which will be intercepted by Android
-                // We'll use a promise to handle the authentication flow properly
-                return new Promise((resolve, reject) => {
-                    // Set up the authentication handler before triggering sign in
-                    const authHandler = (user) => {
-                        console.log("Authentication successful:", user);
-                        // Remove the event listener to prevent multiple calls
-                        if (puter.auth && typeof puter.auth.off === 'function') {
-                            puter.auth.off('auth', authHandler);
-                        }
-                        resolve(user);
-                    };
-                    
-                    const errorHandler = (error) => {
-                        console.error("Authentication error:", error);
-                        // Remove the event listener
-                        if (puter.auth && typeof puter.auth.off === 'function') {
-                            puter.auth.off('authError', errorHandler);
-                        }
-                        reject(error);
-                    };
-                    
-                    // Add event listeners for authentication events
-                    if (puter.auth && typeof puter.auth.on === 'function') {
-                        puter.auth.on('auth', authHandler);
-                        puter.auth.on('authError', errorHandler);
-                    } else {
-                        console.error("Puter auth object not available or methods not found");
-                        reject(new Error("Puter auth object not available"));
-                        return;
-                    }
-                    
-                    // Trigger the authentication flow
-                    puter.auth.signIn()
-                        .then(result => {
-                            console.log("Sign in initiated successfully", result);
-                        })
-                        .catch(err => {
-                            console.error('Error calling puter.auth.signIn():', err);
-                            // Remove event listeners on error
-                            if (puter.auth && typeof puter.auth.off === 'function') {
-                                puter.auth.off('auth', authHandler);
-                                puter.auth.off('authError', errorHandler);
-                            }
-                            reject(err);
-                        });
+                // Trigger the authentication flow directly - the Android WebView will intercept this
+                // We return a success indicator since the actual completion happens via handleAuthCallback
+                const result = await puter.auth.signIn({
+                    // Specify the redirect URI for mobile authentication
+                    redirect_uri: 'blurr://puter-auth-callback'
                 });
+                console.log("Sign in initiated successfully", result);
+                
+                // Return a success indicator - the actual completion will happen via handleAuthCallback
+                return { status: "auth_started", message: "Authentication flow initiated" };
             } catch (error) {
                 console.error('Auth Sign In error:', error);
                 throw error;
@@ -339,10 +302,17 @@
             console.log("Handling auth callback with token:", token);
             // This function will be called when the Android app receives the auth token
             // We can use this to complete the authentication in the Puter.js context
-            if (token && puter.auth && typeof puter.auth.handleAuthCallback === 'function') {
-                puter.auth.handleAuthCallback(token);
+            if (token) {
+                // Puter.js should automatically handle the authentication completion
+                // when the redirect comes back with the token
+                console.log("Auth callback handled, token received:", token);
+                
+                // Notify Android that authentication is complete
+                if (window.AndroidInterface) {
+                    window.AndroidInterface.onAuthSuccess(JSON.stringify({token: token, status: "authenticated"}));
+                }
             } else {
-                console.error("Unable to handle auth callback - token or auth object not available");
+                console.error("Unable to handle auth callback - no token provided");
             }
         }
 

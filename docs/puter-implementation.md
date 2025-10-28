@@ -118,7 +118,7 @@ The recommended practice, and the official guidance from Google for modern OAuth
 This approach combines the strengths of native components and web technologies:
 Native for the app and AI bridge: Your native Android Service continues to manage the background logic and the JavaScript bridge, but the authentication part is delegated.
 Chrome Custom Tab for authentication: The Custom Tab is a browser window that runs on top of your app and provides a full, secure browser experience for the user. It can handle multi-window redirects and complex SSO flows correctly.
- 
+
 Step-by-step implementation for blurr **IMPORTANT**:
 
 Use a hidden WebView for the AI bridge: Continue with the persistent background Service and WebView to act as your continuous JavaScript runtime for everything except authentication. Your native code will communicate with this bridge for AI requests, file operations, and so on.
@@ -189,3 +189,223 @@ JavaScript Execution: The background WebView executes the puterChat() function, 
 Async Response: When the Puter.js AI returns a result, the JavaScript code in your bridge.js handles the promise resolution.
 Send to Native: The JavaScript function then calls back to a native method using the addJavascriptInterface bridge. For example, window.Android.onAIResponse(result).
 Native Action: The native onAIResponse() method in your Service receives the AI result and triggers the next native action (e.g., UI automation, text-to-speech, etc.).
+
+================================================================================================
+
+since you are still making the same mistake repetitively, i went through the codebase of an android app called appflowy (NOT THIS APP) that implemented this oauth flow correctly  (**USING GOOGLE AUTH AND NOT PUTER.JS**) to check how exactly should i implement this.
+
+this is what i concluded in synchrony with @/docs/puter-implementation.md : 
+
+```
+I understand you're building an Android app (a fork of the Blurr AI assistant) and want to implement OAuth authentication using Puter.js, following the same pattern that AppFlowy uses for its OAuth flow.
+
+## What AppFlowy Does (The Pattern You Want to Follow)
+
+AppFlowy's OAuth flow uses **Chrome Custom Tabs** (external browser) for authentication, not WebViews. Here's the exact pattern: [1](#2-0) 
+
+### The AppFlowy Flow:
+
+1. **Generate OAuth URL**: Backend generates the provider-specific OAuth URL [2](#2-1) 
+
+2. **Launch External Browser**: Opens the OAuth URL using `afLaunchUri()` with `LaunchMode.externalApplication` [3](#2-2) 
+
+3. **Deep Link Configuration**: The Android manifest declares intent filters for the `appflowy-flutter://` scheme [4](#2-3) 
+
+4. **Handle Redirect**: After authentication, the browser redirects back to the app via deep link, which is handled by `AppFlowyCloudDeepLink` [5](#2-4) 
+
+5. **Complete Authentication**: A `Completer` registered before launching the browser is resolved when the deep link is received [6](#2-5) 
+
+## What's Wrong With Your Approach
+
+Your Puter.js expert's advice is **correct** - you need to use Chrome Custom Tabs for authentication, not a WebView. The expert identified the exact problem: WebViews can't handle popup-based OAuth flows that rely on multiple tabs/windows.
+
+### The Hybrid Solution (What You Should Implement):
+
+1. **Persistent Background WebView**: Use this for all Puter.js operations (AI chat, KV store, etc.) - everything **except** authentication <cite/>
+
+2. **Chrome Custom Tabs for Auth**: When Puter.js needs to authenticate, intercept the auth URL in your `WebViewClient.shouldOverrideUrlLoading()` and launch it in a Chrome Custom Tab instead <cite/>
+
+3. **Deep Link Handling**: Register a deep link scheme (e.g., `yourapp://auth-callback`) in your AndroidManifest.xml, similar to how AppFlowy registers `appflowy-flutter://` [7](#2-6) 
+
+4. **Complete the Loop**: When Puter.com redirects back to your deep link with the auth token, extract it in your Activity and pass it to your background WebView via the JavaScript bridge to complete sign-in <cite/>
+
+## Implementation Steps for Your App
+
+1. **Add Chrome Custom Tabs dependency**: `androidx.browser:browser`
+
+2. **Configure AndroidManifest.xml** with your custom scheme:
+```xml
+<intent-filter android:autoVerify="true">
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="yourappscheme" />
+</intent-filter>
+```
+
+3. **Intercept Puter.js auth URLs** in your WebViewClient and launch Chrome Custom Tab
+
+4. **Handle the deep link redirect** in an Activity to receive the auth token
+
+5. **Pass token to WebView** via `evaluateJavascript()` to complete Puter.js authentication
+
+## Notes
+
+The key insight is that AppFlowy **never uses WebViews for OAuth** - it always uses external browsers via `LaunchMode.externalApplication`. This is the same pattern your Puter.js expert recommended with Chrome Custom Tabs. The WebView approach only works for the persistent JavaScript runtime, not for authentication flows that require popup windows or multiple tabs.
+
+<cite/>
+
+Wiki pages you might want to explore:
+- [System Architecture and Component Overview (AppFlowy-IO/AppFlowy)](/wiki/AppFlowy-IO/AppFlowy#2.1)
+
+### Citations
+
+**File:** frontend/appflowy_flutter/lib/user/application/auth/af_cloud_auth_service.dart (L48-89)
+```dart
+  @override
+  Future<FlowyResult<UserProfilePB, FlowyError>> signUpWithOAuth({
+    required String platform,
+    Map<String, String> params = const {},
+  }) async {
+    final provider = ProviderTypePBExtension.fromPlatform(platform);
+
+    // Get the oauth url from the backend
+    final result = await UserEventGetOauthURLWithProvider(
+      OauthProviderPB.create()..provider = provider,
+    ).send();
+
+    return result.fold(
+      (data) async {
+        // Open the webview with oauth url
+        final uri = Uri.parse(data.oauthUrl);
+        final isSuccess = await afLaunchUri(
+          uri,
+          mode: LaunchMode.externalApplication,
+          webOnlyWindowName: '_self',
+        );
+
+        final completer = Completer<FlowyResult<UserProfilePB, FlowyError>>();
+        if (isSuccess) {
+          // The [AppFlowyCloudDeepLink] must be registered before using the
+          // [AppFlowyCloudAuthService].
+          if (getIt.isRegistered<AppFlowyCloudDeepLink>()) {
+            getIt<AppFlowyCloudDeepLink>().registerCompleter(completer);
+          } else {
+            throw Exception('AppFlowyCloudDeepLink is not registered');
+          }
+        } else {
+          completer.complete(
+            FlowyResult.failure(AuthError.unableToGetDeepLink),
+          );
+        }
+
+        return completer.future;
+      },
+      (r) => FlowyResult.failure(r),
+    );
+  }
+```
+
+**File:** frontend/appflowy_flutter/android/app/src/main/AndroidManifest.xml (L31-39)
+```text
+      <meta-data android:name="flutter_deeplinking_enabled" android:value="true" />
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data android:scheme="http" />
+        <data android:scheme="https" />
+        <data android:scheme="appflowy-flutter" />
+      </intent-filter>
+```
+
+**File:** frontend/appflowy_flutter/lib/startup/tasks/appflowy_cloud_task.dart (L101-174)
+```dart
+  Future<void> _handleUri(
+    Uri? uri,
+  ) async {
+    _stateNotifier?.value = DeepLinkResult(state: DeepLinkState.none);
+
+    if (uri == null) {
+      Log.error('onDeepLinkError: Unexpected empty deep link callback');
+      _completer?.complete(FlowyResult.failure(AuthError.emptyDeepLink));
+      completer = null;
+      return;
+    }
+
+    await _deepLinkHandlerRegistry.processDeepLink(
+      uri: uri,
+      onStateChange: (handler, state) {
+        // only handle the login deep link
+        if (handler is LoginDeepLinkHandler) {
+          _stateNotifier?.value = DeepLinkResult(state: state);
+        }
+      },
+      onResult: (handler, result) async {
+        if (handler is LoginDeepLinkHandler &&
+            result is FlowyResult<UserProfilePB, FlowyError>) {
+          // If there is no completer, runAppFlowy() will be called.
+          if (_completer == null) {
+            await result.fold(
+              (_) async {
+                await runAppFlowy();
+              },
+              (err) {
+                Log.error(err);
+                final context = AppGlobals.rootNavKey.currentState?.context;
+                if (context != null) {
+                  showToastNotification(
+                    message: err.msg,
+                  );
+                }
+              },
+            );
+          } else {
+            _completer?.complete(result);
+            completer = null;
+          }
+        } else if (handler is ExpireLoginDeepLinkHandler) {
+          result.onFailure(
+            (error) {
+              final context = AppGlobals.rootNavKey.currentState?.context;
+              if (context != null) {
+                showToastNotification(
+                  message: error.msg,
+                  type: ToastificationType.error,
+                );
+              }
+            },
+          );
+        }
+      },
+      onError: (error) {
+        Log.error('onDeepLinkError: Unexpected deep link: $error');
+        if (_completer == null) {
+          final context = AppGlobals.rootNavKey.currentState?.context;
+          if (context != null) {
+            showToastNotification(
+              message: error.msg,
+              type: ToastificationType.error,
+            );
+          }
+        } else {
+          _completer?.complete(FlowyResult.failure(error));
+          completer = null;
+        }
+      },
+    );
+  }
+```
+```
+
+===================
+
+i think that the major flaw is that we are not redirecting the user to his mobile browser, because no where in this project's (blurr, this current app which we are working on) codebase, have i found afLaunchUri or something similar to actually launch the url detected/fetched from the user-activated puter.auth.signIn() button. 
+
+===================
+
+another thing that i noticed is that in a web app powered by puter.js, on the desktop, it opens a popup window where the user completes the authentication and auto-closes the auth popup window upon completion of authentication. on desktop, this is possible because desktop browsers support popup windows. the url of this popup on desktop is https://puter.com/?embedded_in_popup=true&request_auth=true 
+
+but the same web app when i use in a mobile browser, it opens a new tab (instead of a popup window) , the user is redirected to this tab and upon completion of the authentication process from the user's end, this authentication tab closes and the user is back to the web app but logged into his puter.js account. this is because mobile browsers dont have the concept of 'windows' or 'web popups', like desktop browsers . the url of this tab on mobile is https://puter.com/action/sign-in?embedded_in_popup=true&msg_id=1
+
+**USE THIS HUGE INSIGHT AND THE APPFLOWY-BASED SUMMARY IN A VERY THOUGHTFUL WAY AND SOLVE THE ISSUE.**
