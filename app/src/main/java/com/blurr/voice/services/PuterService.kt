@@ -622,6 +622,46 @@ class PuterService : Service() {
             
             webView?.evaluateJavascript(jsCode, null)
         }
+    
+    fun puterGetTaskHistoryFromKvStore(callback: (String?) -> Unit) {
+        webView?.post {
+            val jsCode = """
+                puterKvList("task_*", true)
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), "gettaskhistory");
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, "gettaskhistory");
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    
+    fun puterSaveTaskToKvStore(key: String, taskData: String, callback: (String?) -> Unit) {
+        webView?.post {
+            val jsCode = """
+                puterKvSet("$key", "$taskData")
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), "savetasktostore");
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, "savetasktostore");
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+    }
     }
 
     inner class AndroidInterface {

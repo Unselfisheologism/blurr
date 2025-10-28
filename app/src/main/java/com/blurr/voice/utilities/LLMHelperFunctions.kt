@@ -3,6 +3,7 @@ package com.blurr.voice.utilities
 import android.content.Context
 import android.graphics.Bitmap
 import com.blurr.voice.managers.PuterManager
+import kotlinx.coroutines.future.await
 
 /**
  * Adds a user or model response to the chat history.
@@ -53,5 +54,6 @@ suspend fun getReasoningModelApiResponse(
     val fullPrompt = if (historyContext.isNotEmpty()) "$historyContext\nuser: $lastMessage" else lastMessage
     
     val puterManager = PuterManager.getInstance(context)
-    return puterManager.executePuterChat(fullPrompt) // Changed from LLMApi.generateContent to puterManager method
+    val future = puterManager.chat(fullPrompt) // Changed from LLMApi.generateContent to puterManager method
+    return future.await()
 }

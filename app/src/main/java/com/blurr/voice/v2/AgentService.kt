@@ -136,8 +136,8 @@ class AgentService : Service() {
         // Assuming Eyes, Finger, and SemanticParser can be instantiated directly
         perception = Perception(Eyes(this), SemanticParser())
         llmApi = GeminiApi(
+            this,
             "gemini-2.5-flash",
-            apiKeyManager = ApiKeyManager,
             maxRetry = 10
         ) // Or your preferred model
         actionExecutor = ActionExecutor(Finger(this))

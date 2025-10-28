@@ -133,8 +133,9 @@ class SpeechCoordinator private constructor(private val context: Context) {
      */
     private suspend fun puterTtsSynthesize(text: String, voice: TTSVoice): ByteArray {
         // Use PuterManager to synthesize text to speech
-        // This is a placeholder implementation - in a real scenario, Puter.js would provide proper TTS synthesis
-        return byteArrayOf() // Return empty byte array for now
+        val puterManager = PuterManager.getInstance(context)
+        val ttsData = puterManager.synthesizeTextToSpeech(text)
+        return ttsData
     }
      
     /**

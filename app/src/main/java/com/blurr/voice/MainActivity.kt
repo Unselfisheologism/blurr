@@ -40,6 +40,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycleScope
+import kotlinx.coroutines.future.await
 import java.io.File
 
 class MainActivity : BaseNavigationActivity() {
@@ -275,28 +277,36 @@ class MainActivity : BaseNavigationActivity() {
     }
 
     private fun requestLimitIncrease() {
-        val userEmail = puterManager.getUserEmail()
-        if (userEmail.isNullOrEmpty()) {
-            Toast.makeText(this, "Could not get your email. Please try again.", Toast.LENGTH_SHORT).show()
-            return
-        }
+        lifecycleScope.launch {
+            try {
+                val userEmailFuture = puterManager.getUserEmail()
+                val userEmail = userEmailFuture.await()
+                if (userEmail.isNullOrEmpty()) {
+                    Toast.makeText(this@MainActivity, "Could not get your email. Please try again.", Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
 
-        val recipient = "ayush0000ayush@gmail.com"
-        val subject = "I am facing issue in"
-        val body = "Hello,\n\nI am facing issue for my account: $userEmail\n <issue-content>.... \n\nThank you."
+                val recipient = "ayush0000ayush@gmail.com"
+                val subject = "I am facing issue in"
+                val body = "Hello,\n\nI am facing issue for my account: $userEmail\n <issue-content>.... \n\nThank you."
 
-        val intent = Intent(Intent.ACTION_SENDTO).apply {
-            data = Uri.parse("mailto:") // Only email apps should handle this
-            putExtra(Intent.EXTRA_EMAIL, arrayOf(recipient))
-            putExtra(Intent.EXTRA_SUBJECT, subject)
-            putExtra(Intent.EXTRA_TEXT, body)
-        }
+                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                    data = Uri.parse("mailto:") // Only email apps should handle this
+                    putExtra(Intent.EXTRA_EMAIL, arrayOf(recipient))
+                    putExtra(Intent.EXTRA_SUBJECT, subject)
+                    putExtra(Intent.EXTRA_TEXT, body)
+                }
 
-        // Verify that the intent will resolve to an activity
-        if (intent.resolveActivity(packageManager) != null) {
-            startActivity(intent)
-        } else {
-            Toast.makeText(this, "No email application found.", Toast.LENGTH_SHORT).show()
+                // Verify that the intent will resolve to an activity
+                if (intent.resolveActivity(packageManager) != null) {
+                    startActivity(intent)
+                } else {
+                    Toast.makeText(this@MainActivity, "No email application found.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Logger.e("MainActivity", "Error getting user email", e)
+                Toast.makeText(this@MainActivity, "Error getting user email. Please try again.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 

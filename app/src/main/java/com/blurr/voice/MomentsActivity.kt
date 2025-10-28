@@ -12,6 +12,8 @@ import com.blurr.voice.managers.PuterManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.future.await
 
 class MomentsActivity : BaseNavigationActivity() {
     
@@ -51,10 +53,11 @@ class MomentsActivity : BaseNavigationActivity() {
             return
         }
         
-        CoroutineScope(Dispatchers.Main).launch {
+        lifecycleScope.launch {
             try {
                 // Get task history from puter.js key-value store - use a method that exists
-                val taskHistory = puterManager.getTaskHistoryFromKvStore()
+                val taskHistoryFuture = puterManager.getTaskHistoryFromKvStore()
+                val taskHistory = taskHistoryFuture.await()
                 
                 if (taskHistory.isNotEmpty()) {
                     // Sort by startedAt in descending order (most recent first)

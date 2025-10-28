@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.util.Log
 import org.json.JSONException
+import kotlinx.coroutines.future.await
 
 /**
  * A data class to hold the parsed result from the clarification check for type safety.
@@ -47,9 +48,10 @@ class ClarificationAgent {
 
             // 3. Call the puter.js API using PuterManager.
             val puterManager = PuterManager.getInstance(context)
-            val responseJson = withContext(Dispatchers.IO) {
-                puterManager.executePuterChat(prompt) // Changed from LLMApi.generateContent to puterManager method
+            val responseJsonFuture = withContext(Dispatchers.IO) {
+                puterManager.chat(prompt) // Changed from LLMApi.generateContent to puterManager method
             }
+            val responseJson = responseJsonFuture.await()
             Log.d("ClarificationAgent", "Clarification API Response: $responseJson")
 
             // 4. Parse the JSON response into our data class.

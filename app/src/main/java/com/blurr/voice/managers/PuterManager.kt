@@ -501,6 +501,71 @@ class PuterManager private constructor(private val context: Context) {
         }
 
         return future
+    
+    fun getTaskHistoryFromKvStore(): CompletableFuture<List<TaskHistoryItem>> {
+        val future = CompletableFuture<List<TaskHistoryItem>>()
+        val callbackId = getNextCallbackId()
+
+        callbacks[callbackId] = { response ->
+            try {
+                val jsonArray = org.json.JSONArray(response ?: "[]")
+                val taskHistory = mutableListOf<TaskHistoryItem>()
+                
+                for (i in 0 until jsonArray.length()) {
+                    val item = jsonArray.getJSONObject(i)
+                    val key = item.optString("key")
+                    if (key.startsWith("task_")) {  // Only process task items
+                        val valueStr = item.optString("value", "{}")
+                        val value = org.json.JSONObject(valueStr)
+                        
+                        val taskHistoryItem = TaskHistoryItem(
+                            task = value.optString("task", ""),
+                            status = value.optString("status", ""),
+                            startedAt = if (value.has("startedAt")) value.optLong("startedAt") else null,
+                            completedAt = if (value.has("completedAt")) value.optLong("completedAt") else null,
+                            success = if (value.has("success")) value.optBoolean("success") else null,
+                            errorMessage = if (value.has("errorMessage")) value.optString("errorMessage", "") else null
+                        )
+                        taskHistory.add(taskHistoryItem)
+                    }
+                }
+                
+                future.complete(taskHistory)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing task history", e)
+                future.complete(emptyList())
+            }
+        }
+
+        puterService?.puterGetTaskHistoryFromKvStore { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
+    
+    fun saveTaskToKvStore(key: String, taskData: Map<String, Any?>): CompletableFuture<Boolean> {
+        val future = CompletableFuture<Boolean>()
+        val callbackId = getNextCallbackId()
+        
+        // Convert the task data to JSON string
+        val taskDataJson = try {
+            org.json.JSONObject(taskData).toString()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error converting task data to JSON", e)
+            "{}"
+        }
+
+        callbacks[callbackId] = { response ->
+            future.complete(true)
+        }
+
+        puterService?.puterSaveTaskToKvStore(key, taskDataJson) { response ->
+            callbacks.remove(callbackId)?.invoke(response)
+        }
+
+        return future
+    }
     }
 
     // Additional helper methods
