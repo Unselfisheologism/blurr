@@ -5,8 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import androidx.browser.customtabs.CustomTabsIntent
-import com.blurr.voice.R
+import com.blurr.voice.services.PuterService
 
 class PuterAuthActivity : Activity() {
     companion object {
@@ -17,41 +16,14 @@ class PuterAuthActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Get the auth URL from intent
-        val authUrl = intent.getStringExtra("auth_url")
-        
-        if (authUrl != null) {
-            openAuthInCustomTab(authUrl)
-        } else {
-            finish()
-        }
-    }
-
-    private fun openAuthInCustomTab(authUrl: String) {
-        try {
-            val customTabsIntent = CustomTabsIntent.Builder()
-                .setShowTitle(true)
-                .build()
-            
-            // Add redirect URI as a parameter to the auth URL
-            val uriBuilder = Uri.parse(authUrl).buildUpon()
-            uriBuilder.appendQueryParameter("redirect_uri", AUTH_REDIRECT_URI)
-            
-            customTabsIntent.launchUrl(this, uriBuilder.build())
-        } catch (e: Exception) {
-            Log.e(TAG, "Error opening custom tab", e)
-            setResult(RESULT_CANCELED)
-            finish()
-        }
-    }
-
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-        
-        // Handle redirect back from authentication
-        val data = intent?.data
+        // This activity is launched when the auth flow redirects back to our deep link
+        val data = intent.data
         if (data != null && data.toString().startsWith(AUTH_REDIRECT_URI)) {
+            // Process the authentication result and send it back to the service
             handleAuthRedirect(data)
+        } else {
+            // If this isn't a redirect, just finish
+            finish()
         }
     }
 
@@ -61,19 +33,16 @@ class PuterAuthActivity : Activity() {
             val token = uri.getQueryParameter("token") ?: uri.getQueryParameter("auth_token")
             
             if (token != null) {
-                // Return success with token
-                val resultIntent = Intent().apply {
-                    putExtra("token", token)
-                }
-                setResult(RESULT_OK, resultIntent)
+                Log.d(TAG, "Authentication successful, token received")
+                // The PuterService should already be handling this via its WebViewClient
+                // We just need to finish this activity
             } else {
-                // Authentication failed
-                setResult(RESULT_CANCELED)
+                Log.e(TAG, "Authentication failed - no token in redirect URI")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling auth redirect", e)
-            setResult(RESULT_CANCELED)
         } finally {
+            // Close this activity as the auth flow is complete
             finish()
         }
     }

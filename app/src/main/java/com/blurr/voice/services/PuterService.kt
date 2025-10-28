@@ -62,7 +62,9 @@ class PuterService : Service() {
                         }
                         
                         // Intercept Puter.js authentication URL and redirect to Chrome Custom Tabs
-                        if (url?.contains("puter.com/auth") == true || url?.contains("puter.com/login") == true) {
+                        if (url?.contains("puter.com/auth") == true || 
+                            url?.contains("puter.com/login") == true || 
+                            url?.contains("puter.com/action/sign-in") == true) {
                             openAuthInCustomTab(url)
                             return true
                         }
@@ -91,7 +93,9 @@ class PuterService : Service() {
                             newWebView?.destroy()
                             
                             // Open the URL in Chrome Custom Tabs instead
-                            if (popupUrl != null && (popupUrl.contains("puter.com/auth") || popupUrl.contains("puter.com/login"))) {
+                            if (popupUrl != null && (popupUrl.contains("puter.com/auth") || 
+                                    popupUrl.contains("puter.com/login") || 
+                                    popupUrl.contains("puter.com/action/sign-in"))) {
                                 openAuthInCustomTab(popupUrl)
                                 return true
                             }
