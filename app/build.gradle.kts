@@ -119,6 +119,8 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
     implementation("androidx.recyclerview:recyclerview:1.3.2")
     
+    // Google Play Services for authentication
+    implementation(libs.play.services.auth)
 }
 
 // Task to increment version for release builds
