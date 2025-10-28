@@ -622,7 +622,8 @@ class PuterService : Service() {
             
             webView?.evaluateJavascript(jsCode, null)
         }
-    
+    }
+
     fun puterGetTaskHistoryFromKvStore(callback: (String?) -> Unit) {
         webView?.post {
             val jsCode = """
@@ -641,7 +642,8 @@ class PuterService : Service() {
             
             webView?.evaluateJavascript(jsCode, null)
         }
-    
+    }
+
     fun puterSaveTaskToKvStore(key: String, taskData: String, callback: (String?) -> Unit) {
         webView?.post {
             val jsCode = """
@@ -661,8 +663,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-    }
-    }
+}
 
     inner class AndroidInterface {
         @JavascriptInterface

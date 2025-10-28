@@ -108,6 +108,9 @@ dependencies {
     // https://mvnrepository.com/artifact/androidx.test.uiautomator/uiautomator
     implementation("androidx.test.uiautomator:uiautomator:2.3.0")
 
+    // Browser dependency for CustomTabsIntent
+    implementation("androidx.browser:browser:1.8.0")
+
     
     
     // Room database dependencies

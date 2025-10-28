@@ -7,6 +7,7 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
 import com.blurr.voice.services.PuterService
+import com.blurr.voice.data.TaskHistoryItem
 import java.util.concurrent.CompletableFuture
 
 class PuterManager private constructor(private val context: Context) {
