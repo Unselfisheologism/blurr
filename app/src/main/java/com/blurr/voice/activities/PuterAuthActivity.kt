@@ -29,21 +29,60 @@ class PuterAuthActivity : Activity() {
 
     private fun handleAuthRedirect(uri: Uri) {
         try {
+            Log.d(TAG, "Handling auth redirect: $uri")
+            
             // Extract token or auth data from the redirect URI
-            val token = uri.getQueryParameter("token") ?: uri.getQueryParameter("auth_token")
+            val token = uri.getQueryParameter("token") ?: uri.getQueryParameter("auth_token") ?: 
+                       uri.getQueryParameter("access_token")
             
             if (token != null) {
                 Log.d(TAG, "Authentication successful, token received")
-                // The PuterService should already be handling this via its WebViewClient
-                // We just need to finish this activity
+                // Send the token back to the PuterService
+                sendTokenToService(token)
             } else {
                 Log.e(TAG, "Authentication failed - no token in redirect URI")
+                // Send error back to the PuterService
+                sendErrorToService("No token in redirect URI")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling auth redirect", e)
+            // Send error back to the PuterService
+            sendErrorToService("Error handling auth redirect: ${e.message}")
         } finally {
             // Close this activity as the auth flow is complete
             finish()
         }
+    }
+    
+    private fun sendTokenToService(token: String) {
+        // Create an intent to send the token back to the PuterService
+        val intent = Intent(this, PuterService::class.java).apply {
+            action = "AUTH_SUCCESS"
+            putExtra("token", token)
+        }
+        
+        // Send the broadcast to the service
+        sendBroadcast(intent)
+        
+        // Also set result for the activity result API
+        setResult(RESULT_OK, Intent().apply {
+            putExtra("token", token)
+        })
+    }
+    
+    private fun sendErrorToService(error: String) {
+        // Create an intent to send the error back to the PuterService
+        val intent = Intent(this, PuterService::class.java).apply {
+            action = "AUTH_ERROR"
+            putExtra("error", error)
+        }
+        
+        // Send the broadcast to the service
+        sendBroadcast(intent)
+        
+        // Also set result for the activity result API
+        setResult(RESULT_CANCELED, Intent().apply {
+            putExtra("error", error)
+        })
     }
 }

@@ -253,9 +253,52 @@
                 console.log("Triggering Puter authentication...");
                 
                 // The puter.auth.signIn() will try to open a popup which will be intercepted by Android
-                const response = await puter.auth.signIn();
-                console.log("Sign in response:", response);
-                return response;
+                // We'll use a promise to handle the authentication flow properly
+                return new Promise((resolve, reject) => {
+                    // Set up the authentication handler before triggering sign in
+                    const authHandler = (user) => {
+                        console.log("Authentication successful:", user);
+                        // Remove the event listener to prevent multiple calls
+                        if (puter.auth && typeof puter.auth.off === 'function') {
+                            puter.auth.off('auth', authHandler);
+                        }
+                        resolve(user);
+                    };
+                    
+                    const errorHandler = (error) => {
+                        console.error("Authentication error:", error);
+                        // Remove the event listener
+                        if (puter.auth && typeof puter.auth.off === 'function') {
+                            puter.auth.off('authError', errorHandler);
+                        }
+                        reject(error);
+                    };
+                    
+                    // Add event listeners for authentication events
+                    if (puter.auth && typeof puter.auth.on === 'function') {
+                        puter.auth.on('auth', authHandler);
+                        puter.auth.on('authError', errorHandler);
+                    } else {
+                        console.error("Puter auth object not available or methods not found");
+                        reject(new Error("Puter auth object not available"));
+                        return;
+                    }
+                    
+                    // Trigger the authentication flow
+                    puter.auth.signIn()
+                        .then(result => {
+                            console.log("Sign in initiated successfully", result);
+                        })
+                        .catch(err => {
+                            console.error('Error calling puter.auth.signIn():', err);
+                            // Remove event listeners on error
+                            if (puter.auth && typeof puter.auth.off === 'function') {
+                                puter.auth.off('auth', authHandler);
+                                puter.auth.off('authError', errorHandler);
+                            }
+                            reject(err);
+                        });
+                });
             } catch (error) {
                 console.error('Auth Sign In error:', error);
                 throw error;
@@ -290,6 +333,18 @@
                 throw error;
             }
         }
+        
+        // Function to handle authentication callback from Android
+        function handleAuthCallback(token) {
+            console.log("Handling auth callback with token:", token);
+            // This function will be called when the Android app receives the auth token
+            // We can use this to complete the authentication in the Puter.js context
+            if (token && puter.auth && typeof puter.auth.handleAuthCallback === 'function') {
+                puter.auth.handleAuthCallback(token);
+            } else {
+                console.error("Unable to handle auth callback - token or auth object not available");
+            }
+        }
 
         // Handle responses back to Android
         function handleResponse(response, callbackId) {
@@ -302,25 +357,6 @@
             if (window.AndroidInterface) {
                 window.AndroidInterface.onAIError(error.message, callbackId);
             }
-        }
-
-        // Listen for auth events and notify Android
-        if (puter.auth) {
-            // Set up an event listener for authentication state changes
-            puter.auth.onAuth = function(user) {
-                console.log("Authentication event received:", user);
-                if (window.AndroidInterface) {
-                    window.AndroidInterface.onAuthSuccess(JSON.stringify(user));
-                }
-            };
-            
-            // Also listen for authentication errors
-            puter.auth.onAuthError = function(error) {
-                console.error("Authentication error:", error);
-                if (window.AndroidInterface) {
-                    window.AndroidInterface.onAIError(error.message || 'Authentication error occurred', 'auth');
-                }
-            };
         }
 
         // Ready indicator
