@@ -157,6 +157,11 @@ class PuterService : Service() {
                         Log.d(TAG, "Page finished loading: $url")
                         // Inject Android interface after page loads
                         view?.addJavascriptInterface(AndroidInterface(), "AndroidInterface")
+                        
+                        // Check if this is the initial page load and send a ready signal
+                        if (url?.contains("puter_webview.html") == true) {
+                            Log.d(TAG, "Puter bridge ready")
+                        }
                     }
                     
                     override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
@@ -174,6 +179,12 @@ class PuterService : Service() {
                     override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                         super.onReceivedError(view, request, error)
                         Log.e(TAG, "WebView error: ${error?.description} for URL: ${request?.url}")
+                    }
+                    
+                    // Override onReceivedHttpError to handle HTTP errors
+                    override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
+                        super.onReceivedHttpError(view, request, errorResponse)
+                        Log.e(TAG, "HTTP error: ${errorResponse?.statusCode} for URL: ${request?.url}")
                     }
                 }
 

@@ -576,8 +576,21 @@ class PuterManager private constructor(private val context: Context) {
     }
 
     fun isUserSignedIn(): Boolean {
-        // This is a placeholder implementation
-        return true
+        var result = false
+        if (isBound) {
+            val latch = java.util.concurrent.CountDownLatch(1)
+            puterService?.puterAuthIsSignedIn { signedIn ->
+                result = signedIn
+                latch.countDown()
+            }
+            try {
+                // Wait for a maximum of 5 seconds for the authentication check
+                latch.await(5, java.util.concurrent.TimeUnit.SECONDS)
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+        }
+        return result
     }
 
     fun getUserId(): String {

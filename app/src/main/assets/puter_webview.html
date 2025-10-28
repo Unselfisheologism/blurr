@@ -254,10 +254,7 @@
                 
                 // Trigger the authentication flow directly - the Android WebView will intercept this
                 // We return a success indicator since the actual completion happens via handleAuthCallback
-                const result = await puter.auth.signIn({
-                    // Specify the redirect URI for mobile authentication
-                    redirect_uri: 'blurr://puter-auth-callback'
-                });
+                const result = await puter.auth.signIn();
                 console.log("Sign in initiated successfully", result);
                 
                 // Return a success indicator - the actual completion will happen via handleAuthCallback
