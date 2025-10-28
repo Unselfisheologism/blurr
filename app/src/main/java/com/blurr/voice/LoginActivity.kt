@@ -64,7 +64,7 @@ class LoginActivity : AppCompatActivity() {
         // THIS IS THE CRITICAL CHANGE:
         // Don't try to trigger authentication through WebView
         // Instead, directly launch Custom Tabs with the authentication URL
-        val authUrl = "https://puter.com/action/sign-in?embedded_in_popup=true"
+        val authUrl = "https://puter.com/action/sign-in"
         
         try {
             val customTabsIntent = CustomTabsIntent.Builder()
