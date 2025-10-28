@@ -117,7 +117,8 @@ The solution: A hybrid approach with Chrome Custom Tabs
 The recommended practice, and the official guidance from Google for modern OAuth and SSO flows in native apps, is to use a Chrome Custom Tab for authentication instead of an embedded WebView. 
 This approach combines the strengths of native components and web technologies:
 Native for the app and AI bridge: Your native Android Service continues to manage the background logic and the JavaScript bridge, but the authentication part is delegated.
-Chrome Custom Tab for authentication: The Custom Tab is a browser window that runs on top of your app and provides a full, secure browser experience for the user. It can handle multi-window redirects and complex SSO flows correctly. 
+Chrome Custom Tab for authentication: The Custom Tab is a browser window that runs on top of your app and provides a full, secure browser experience for the user. It can handle multi-window redirects and complex SSO flows correctly.
+ 
 Step-by-step implementation for blurr **IMPORTANT**:
 
 Use a hidden WebView for the AI bridge: Continue with the persistent background Service and WebView to act as your continuous JavaScript runtime for everything except authentication. Your native code will communicate with this bridge for AI requests, file operations, and so on.

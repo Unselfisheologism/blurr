@@ -254,6 +254,7 @@
                 
                 // The puter.auth.signIn() will try to open a popup which will be intercepted by Android
                 const response = await puter.auth.signIn();
+                console.log("Sign in response:", response);
                 return response;
             } catch (error) {
                 console.error('Auth Sign In error:', error);
@@ -307,8 +308,17 @@
         if (puter.auth) {
             // Set up an event listener for authentication state changes
             puter.auth.onAuth = function(user) {
+                console.log("Authentication event received:", user);
                 if (window.AndroidInterface) {
                     window.AndroidInterface.onAuthSuccess(JSON.stringify(user));
+                }
+            };
+            
+            // Also listen for authentication errors
+            puter.auth.onAuthError = function(error) {
+                console.error("Authentication error:", error);
+                if (window.AndroidInterface) {
+                    window.AndroidInterface.onAIError(error.message || 'Authentication error occurred', 'auth');
                 }
             };
         }

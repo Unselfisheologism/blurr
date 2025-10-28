@@ -79,6 +79,24 @@ class PuterService : Service() {
 
                 webChromeClient = object : WebChromeClient() {
                     override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean {
+                        // Intercept popup windows and redirect to Chrome Custom Tabs
+                        val transport = resultMsg?.obj as? WebView.WebViewTransport
+                        if (transport != null) {
+                            val newWebView = transport.webView
+                            
+                            // Get the URL that would be loaded in the popup
+                            val popupUrl = newWebView?.url
+                            
+                            // Close the popup WebView
+                            newWebView?.destroy()
+                            
+                            // Open the URL in Chrome Custom Tabs instead
+                            if (popupUrl != null && (popupUrl.contains("puter.com/auth") || popupUrl.contains("puter.com/login"))) {
+                                openAuthInCustomTab(popupUrl)
+                                return true
+                            }
+                        }
+                        
                         return false
                     }
                     
@@ -99,11 +117,15 @@ class PuterService : Service() {
 
     private fun openAuthInCustomTab(authUrl: String) {
         try {
+            // Add the redirect URI to the auth URL to ensure proper redirect after authentication
+            val uriBuilder = android.net.Uri.parse(authUrl).buildUpon()
+            uriBuilder.appendQueryParameter("redirect_uri", AUTH_REDIRECT_URI)
+            
             val customTabsIntent = CustomTabsIntent.Builder()
                 .setShowTitle(true)
                 .build()
             
-            customTabsIntent.launchUrl(this, android.net.Uri.parse(authUrl))
+            customTabsIntent.launchUrl(this, uriBuilder.build())
         } catch (e: Exception) {
             Log.e(TAG, "Error opening custom tab", e)
             Toast.makeText(this, "Failed to open authentication", Toast.LENGTH_SHORT).show()
