@@ -236,14 +236,12 @@ class PuterManager private constructor(private val context: Context) {
         return future
     }
 
-    // Authentication sign in functionality
+    // Authentication sign in functionality - now handled by LoginActivity directly
     fun signIn(): CompletableFuture<Boolean> {
         val future = CompletableFuture<Boolean>()
-
-        puterService?.puterAuthSignIn { success ->
-            future.complete(success)
-        }
-
+        // Since authentication is handled directly by LoginActivity with Custom Tabs,
+        // we just return true to indicate the process has started
+        future.complete(true)
         return future
     }
 

@@ -248,17 +248,10 @@
         // Authentication functions
         async function puterAuthSignIn() {
             try {
-                // This will trigger the authentication flow which will be intercepted by the Android WebView
-                // The actual authentication will happen in Chrome Custom Tabs
-                console.log("Triggering Puter authentication...");
-                
-                // Trigger the authentication flow directly - the Android WebView will intercept this
-                // We return a success indicator since the actual completion happens via handleAuthCallback
-                const result = await puter.auth.signIn();
-                console.log("Sign in initiated successfully", result);
-                
-                // Return a success indicator - the actual completion will happen via handleAuthCallback
-                return { status: "auth_started", message: "Authentication flow initiated" };
+                // Since authentication is handled by LoginActivity directly with Custom Tabs,
+                // we just return a success indicator to prevent conflicts
+                console.log("Authentication flow initiated externally");
+                return { status: "auth_started", message: "Authentication flow initiated externally" };
             } catch (error) {
                 console.error('Auth Sign In error:', error);
                 throw error;

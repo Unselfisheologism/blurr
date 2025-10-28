@@ -41,64 +41,7 @@ class PuterService : Service() {
     override fun onCreate() {
         super.onCreate()
         initializeWebView()
-        registerAuthReceiver()
-    }
-
-    private fun registerAuthReceiver() {
-        authReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                when (intent?.action) {
-                    "AUTH_SUCCESS" -> {
-                        val token = intent.getStringExtra("token")
-                        Log.d(TAG, "Received auth success broadcast with token: $token")
-                        // Handle successful authentication
-                        handleAuthSuccess(token)
-                    }
-                    "AUTH_ERROR" -> {
-                        val error = intent.getStringExtra("error")
-                        Log.e(TAG, "Received auth error broadcast: $error")
-                        // Handle authentication error
-                        handleAuthError(error)
-                    }
-                }
-            }
-        }
-        
-        val filter = IntentFilter().apply {
-            addAction("AUTH_SUCCESS")
-            addAction("AUTH_ERROR")
-        }
-        
-        registerReceiver(authReceiver, filter)
-    }
-    
-    private fun handleAuthSuccess(token: String?) {
-        if (token != null) {
-            // Send the token to the WebView to complete authentication
-            webView?.post {
-                val jsCode = """
-                    if (window.handleAuthCallback) {
-                        // Complete the authentication in the Puter.js context
-                        window.handleAuthCallback('$token');
-                    } else if (window.puter && window.puter.auth) {
-                        // Alternative method if handleAuthCallback is not available
-                        console.log("handleAuthCallback not available, trying direct auth completion");
-                    }
-                """.trimIndent()
-                webView?.evaluateJavascript(jsCode, null)
-            }
-            
-            // Notify the sign in callback that authentication was successful
-            signInCallback?.invoke(true)
-            signInCallback = null
-        }
-    }
-    
-    private fun handleAuthError(error: String?) {
-        Log.e(TAG, "Authentication error: $error")
-        // Notify the sign in callback that authentication failed
-        signInCallback?.invoke(false)
-        signInCallback = null
+        // Don't register auth receiver since LoginActivity handles authentication directly
     }
 
     private fun initializeWebView() {
@@ -132,23 +75,6 @@ class PuterService : Service() {
                             return true
                         }
                         
-                        // Intercept Puter.js authentication URL and redirect to Chrome Custom Tabs
-                        // Mobile auth URL: https://puter.com/action/sign-in?embedded_in_popup=true&msg_id=1
-                        // Desktop auth URL: https://puter.com/?embedded_in_popup=true&request_auth=true
-                        if (url?.contains("puter.com/auth") == true || 
-                            url?.contains("puter.com/login") == true || 
-                            url?.contains("puter.com/action/sign-in") == true ||
-                            url?.contains("puter.com/?embedded_in_popup=true") == true ||
-                            url?.contains("puter.com/action/auth") == true ||
-                            (url?.contains("puter.com") == true && 
-                             (url?.contains("embedded_in_popup=true") == true || 
-                              url?.contains("request_auth=true") == true ||
-                              url?.contains("msg_id=") == true))) {
-                            Log.d(TAG, "Opening auth in custom tab: $url")
-                            openAuthInCustomTab(url)
-                            return true
-                        }
-                        
                         return false
                     }
 
@@ -157,68 +83,20 @@ class PuterService : Service() {
                         Log.d(TAG, "Page finished loading: $url")
                         // Inject Android interface after page loads
                         view?.addJavascriptInterface(AndroidInterface(), "AndroidInterface")
-                        
-                        // Check if this is the initial page load and send a ready signal
-                        if (url?.contains("puter_webview.html") == true) {
-                            Log.d(TAG, "Puter bridge ready")
-                        }
                     }
                     
                     override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                         super.onPageStarted(view, url, favicon)
                         Log.d(TAG, "Page started loading: $url")
-                        
-                        // Check if this is an authentication-related page that might redirect
-                        if (url?.contains("puter.com/auth") == true || 
-                            url?.contains("puter.com/login") == true || 
-                            url?.contains("puter.com/action/sign-in") == true) {
-                            Log.d(TAG, "Authentication page loaded: $url")
-                        }
                     }
                     
                     override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
                         super.onReceivedError(view, request, error)
                         Log.e(TAG, "WebView error: ${error?.description} for URL: ${request?.url}")
                     }
-                    
-                    // Override onReceivedHttpError to handle HTTP errors
-                    override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
-                        super.onReceivedHttpError(view, request, errorResponse)
-                        Log.e(TAG, "HTTP error: ${errorResponse?.statusCode} for URL: ${request?.url}")
-                    }
                 }
 
                 webChromeClient = object : WebChromeClient() {
-                    override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean {
-                        // Intercept popup windows and redirect to Chrome Custom Tabs
-                        val transport = resultMsg?.obj as? WebView.WebViewTransport
-                        if (transport != null) {
-                            val newWebView = transport.webView
-                            
-                            // Get the URL that would be loaded in the popup
-                            val popupUrl = newWebView?.url
-                            
-                            // Close the popup WebView
-                            newWebView?.destroy()
-                            
-                            // Open the URL in Chrome Custom Tabs instead
-                            if (popupUrl != null && (popupUrl.contains("puter.com/auth") || 
-                                    popupUrl.contains("puter.com/login") || 
-                                    popupUrl.contains("puter.com/action/sign-in") ||
-                                    popupUrl.contains("puter.com/?embedded_in_popup=true") ||
-                                    (popupUrl.contains("puter.com") && 
-                                     (popupUrl.contains("embedded_in_popup=true") || 
-                                      popupUrl.contains("request_auth=true") ||
-                                      popupUrl.contains("msg_id="))))) {
-                                Log.d(TAG, "Opening popup auth in custom tab: $popupUrl")
-                                openAuthInCustomTab(popupUrl)
-                                return true
-                            }
-                        }
-                        
-                        return false
-                    }
-                    
                     override fun onJsAlert(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
                         Toast.makeText(this@PuterService, message, Toast.LENGTH_SHORT).show()
                         result?.confirm()
@@ -231,24 +109,6 @@ class PuterService : Service() {
             webView?.loadUrl("file:///android_asset/puter_webview.html")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing WebView", e)
-        }
-    }
-
-    private fun openAuthInCustomTab(authUrl: String) {
-        try {
-            Log.d(TAG, "Opening authentication URL in custom tab: $authUrl")
-            // Add the redirect URI to the auth URL to ensure proper redirect after authentication
-            val uriBuilder = android.net.Uri.parse(authUrl).buildUpon()
-            uriBuilder.appendQueryParameter("redirect_uri", AUTH_REDIRECT_URI)
-            
-            val customTabsIntent = CustomTabsIntent.Builder()
-                .setShowTitle(true)
-                .build()
-            
-            customTabsIntent.launchUrl(this, uriBuilder.build())
-        } catch (e: Exception) {
-            Log.e(TAG, "Error opening custom tab", e)
-            Toast.makeText(this, "Failed to open authentication", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -920,7 +780,7 @@ class PuterService : Service() {
     }
 
     override fun onDestroy() {
-        // Unregister the broadcast receiver
+        // Unregister the broadcast receiver if it exists
         authReceiver?.let { unregisterReceiver(it) }
         webView?.destroy()
         webView = null

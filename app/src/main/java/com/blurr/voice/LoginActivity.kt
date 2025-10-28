@@ -1,6 +1,7 @@
 package com.blurr.voice
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -9,12 +10,15 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.blurr.voice.utilities.OnboardingManager
 import com.blurr.voice.utilities.UserProfileManager
 import com.blurr.voice.managers.PuterManager
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.future.await
+import android.content.SharedPreferences
 
 class LoginActivity : AppCompatActivity() {
 
@@ -41,39 +45,75 @@ class LoginActivity : AppCompatActivity() {
         puterSignInButton.setOnClickListener {
             signInWithPuter()
         }
+        
+        // Handle authentication response from Custom Tabs
+        handleAuthResponse(intent)
+    }
+    
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAuthResponse(intent)
     }
 
     private fun signInWithPuter() {
         progressBar.visibility = View.VISIBLE
         loadingText.visibility = View.VISIBLE
         puterSignInButton.isEnabled = false
-
-        Log.d("LoginActivity", "Starting Puter.js sign-in via puter.auth.signIn()")
-
-        // Trigger authentication through the PuterService by calling puter.auth.signIn()
-        lifecycleScope.launch {
-            try {
-                val success = puterManager.signIn().await()
+        
+        // THIS IS THE CRITICAL CHANGE:
+        // Don't try to trigger authentication through WebView
+        // Instead, directly launch Custom Tabs with the authentication URL
+        val authUrl = "https://puter.com/auth"
+        
+        try {
+            val customTabsIntent = CustomTabsIntent.Builder()
+                .setToolbarColor(ContextCompat.getColor(this, R.color.design_default_color_primary))
+                .build()
+            
+            Log.d("LoginActivity", "Launching Custom Tabs for authentication")
+            customTabsIntent.launchUrl(this, Uri.parse(authUrl))
+        } catch (e: Exception) {
+            Log.e("LoginActivity", "Failed to launch Custom Tabs", e)
+            runOnUiThread {
+                progressBar.visibility = View.GONE
+                loadingText.visibility = View.GONE
+                puterSignInButton.isEnabled = true
+                Toast.makeText(this, "Browser not available. Please install Chrome.", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+    
+    private fun handleAuthResponse(intent: Intent) {
+        val data = intent.data
+        Log.d("LoginActivity", "Received intent: $data")
+        
+        // Check if this is our authentication callback
+        if (data != null && data.toString().startsWith("blurr://puter-auth-callback")) {
+            val token = data.getQueryParameter("token")
+            val error = data.getQueryParameter("error")
+            
+            if (!token.isNullOrEmpty()) {
+                Log.d("LoginActivity", "Authentication successful, token received")
+                // Save token securely
+                val editor = getSharedPreferences("auth", MODE_PRIVATE).edit()
+                editor.putString("puter_token", token)
+                editor.apply()
+                
+                // Proceed to main activity
                 runOnUiThread {
                     progressBar.visibility = View.GONE
                     loadingText.visibility = View.GONE
-                    puterSignInButton.isEnabled = true
-                    
-                    if (success) {
-                        Log.d("LoginActivity", "Puter.js sign-in successful")
-                        startPostAuthFlow()
-                    } else {
-                        Log.w("LoginActivity", "Puter.js sign-in failed")
-                        Toast.makeText(this@LoginActivity, "Authentication failed", Toast.LENGTH_SHORT).show()
-                    }
+                    Toast.makeText(this, "Successfully authenticated!", Toast.LENGTH_SHORT).show()
+                    startPostAuthFlow()
                 }
-            } catch (e: Exception) {
-                Log.e("LoginActivity", "Error during authentication", e)
+            } else if (!error.isNullOrEmpty()) {
+                Log.e("LoginActivity", "Authentication error: $error")
                 runOnUiThread {
                     progressBar.visibility = View.GONE
                     loadingText.visibility = View.GONE
                     puterSignInButton.isEnabled = true
-                    Toast.makeText(this@LoginActivity, "Authentication error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Authentication failed: $error", Toast.LENGTH_SHORT).show()
                 }
             }
         }
