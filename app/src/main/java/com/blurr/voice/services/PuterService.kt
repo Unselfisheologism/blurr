@@ -345,7 +345,7 @@ class PuterService : Service() {
         authCallback = { token ->
             callback(token != null)
         }
-    
+
         webView?.post {
             val jsCode = """
                 puterAuthSignIn()
@@ -672,7 +672,27 @@ class PuterService : Service() {
             when (callbackId) {
                 "gettaskhistory" -> handleTaskHistoryResponse(response)
                 "savetasktostore" -> handleTaskSaveResponse(response)
-                else -> Log.d(TAG, "Unhandled callbackId: $callbackId")
+                "auth" -> {
+                    // Handle authentication response
+                    authCallback?.invoke(response)
+                    authCallback = null
+                }
+                "authcheck" -> {
+                    // Handle authentication check response
+                    authCallback?.invoke(response)
+                    authCallback = null
+                }
+                "getuser" -> {
+                    // Handle get user response
+                    authCallback?.invoke(response)
+                    authCallback = null
+                }
+                else -> {
+                    Log.d(TAG, "Unhandled callbackId: $callbackId")
+                    // For any other response, call the callback if it exists
+                    authCallback?.invoke(response)
+                    authCallback = null
+                }
             }
         }
 
@@ -683,7 +703,30 @@ class PuterService : Service() {
             when (callbackId) {
                 "gettaskhistory" -> handleTaskHistoryError(error)
                 "savetasktostore" -> handleTaskSaveError(error)
-                else -> Log.d(TAG, "Unhandled error callbackId: $callbackId")
+                "auth" -> {
+                    // Handle authentication error
+                    Log.e(TAG, "Auth error: $error")
+                    authCallback?.invoke(null)
+                    authCallback = null
+                }
+                "authcheck" -> {
+                    // Handle authentication check error
+                    Log.e(TAG, "Auth check error: $error")
+                    authCallback?.invoke(null)
+                    authCallback = null
+                }
+                "getuser" -> {
+                    // Handle get user error
+                    Log.e(TAG, "Get user error: $error")
+                    authCallback?.invoke(null)
+                    authCallback = null
+                }
+                else -> {
+                    Log.d(TAG, "Unhandled error callbackId: $callbackId")
+                    // For any other error, call the callback if it exists
+                    authCallback?.invoke(null)
+                    authCallback = null
+                }
             }
         }
 
@@ -691,6 +734,8 @@ class PuterService : Service() {
         fun onAuthSuccess(userJson: String) {
             Log.d(TAG, "Authentication successful: $userJson")
             // Notify the app that authentication was successful
+            authCallback?.invoke(userJson)
+            authCallback = null
         }
         
         private fun handleTaskHistoryResponse(response: String) {

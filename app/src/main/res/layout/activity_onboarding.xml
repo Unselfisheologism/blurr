@@ -29,73 +29,20 @@
         android:textColor="#FFBD86"
         android:textSize="20sp" />
 
-    <EditText
-        android:id="@+id/emailInput"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_below="@id/dividerContainer"
-        android:layout_marginTop="12dp"
-        android:background="@drawable/input_box_background"
-        android:fontFamily="@font/oxanium"
-        android:hint="Enter your email [WIP]"
-        android:inputType="textEmailAddress"
-        android:padding="12dp"
-        android:textColor="@android:color/white"
-        android:textColorHint="#80FFFFFF" />
-
+    <!-- Puter Sign In Button -->
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/emailSendLinkButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/emailInput"
-        android:layout_marginTop="12dp"
-        android:fontFamily="@font/oxanium"
-        android:text="Send magic link"
-        android:textAllCaps="false"
-        android:textColor="@color/black"
-        app:backgroundTint="#FFBD86"
-        app:cornerRadius="12dp" />
-
-    <com.google.android.gms.common.SignInButton
-        android:id="@+id/googleSignInButton"
+        android:id="@+id/puterSignInButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/inviteMessage"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="50dp" />
-
-    <LinearLayout
-        android:id="@+id/dividerContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/googleSignInButton"
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="12dp"
-        android:orientation="horizontal"
-        android:gravity="center_vertical">
-
-        <View
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1"
-            android:background="#323232" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:fontFamily="@font/oxanium"
-            android:text="OR"
-            android:textColor="#C7C7C7"
-            android:textStyle="normal" />
-
-        <View
-            android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1"
-            android:background="#323232" />
-    </LinearLayout>
+        android:layout_marginTop="50dp"
+        android:fontFamily="@font/oxanium"
+        android:text="Login with Puter"
+        android:textAllCaps="false"
+        android:textColor="@color/black"
+        app:backgroundTint="#FFBD86"
+        app:cornerRadius="12dp" />
 
     <ProgressBar
         android:id="@+id/progressBar"

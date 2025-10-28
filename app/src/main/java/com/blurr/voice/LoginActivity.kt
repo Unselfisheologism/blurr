@@ -7,7 +7,6 @@ import android.view.View
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -20,8 +19,7 @@ import kotlinx.coroutines.future.await
 class LoginActivity : AppCompatActivity() {
 
     private lateinit var puterManager: PuterManager
-    private lateinit var emailField: EditText
-    private lateinit var emailSendLinkButton: Button
+    private lateinit var puterSignInButton: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var loadingText: TextView
 
@@ -29,63 +27,59 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_onboarding)
 
-        emailField = findViewById(R.id.emailInput)
-        emailSendLinkButton = findViewById(R.id.emailSendLinkButton)
+        // Find the new Puter sign-in button
+        puterSignInButton = findViewById(R.id.puterSignInButton)
         progressBar = findViewById(R.id.progressBar)
         loadingText = findViewById(R.id.loadingText)
         puterManager = PuterManager.getInstance(this)
 
-        emailSendLinkButton.setOnClickListener {
-            val email = emailField.text?.toString()?.trim()
-            if (!email.isNullOrEmpty()) {
-                sendSignInLink(email)
-            } else {
-                Toast.makeText(this, "Enter your email", Toast.LENGTH_SHORT).show()
-            }
+        // Set click listener for the Puter sign-in button
+        puterSignInButton.setOnClickListener {
+            signInWithPuter()
         }
     }
 
-    private fun sendSignInLink(email: String) {
+    private fun signInWithPuter() {
         progressBar.visibility = View.VISIBLE
         loadingText.visibility = View.VISIBLE
-        emailSendLinkButton.isEnabled = false
+        puterSignInButton.isEnabled = false
 
-        Log.d("LoginActivity", "Starting email sign-in with puter.js: $email")
+        Log.d("LoginActivity", "Starting Puter.js sign-in")
 
-        // Use puter.js email sign-in functionality
-        puterManager.signIn()
-        runOnUiThread {
-            progressBar.visibility = View.GONE
-            loadingText.visibility = View.GONE
-            emailSendLinkButton.isEnabled = true
+        // Use puter.js authentication functionality
+        val signInFuture = puterManager.signIn()
+        signInFuture.whenComplete { success, throwable ->
+            runOnUiThread {
+                progressBar.visibility = View.GONE
+                loadingText.visibility = View.GONE
+                puterSignInButton.isEnabled = true
 
-            // Check if sign in was successful
-            if (puterManager.isUserSignedIn()) {
-                Log.d("LoginActivity", "Puter.js email sign-in successful")
-                startPostAuthFlow()
-            } else {
-                Log.w("LoginActivity", "Puter.js email sign-in failed")
-                Toast.makeText(this, "Authentication Failed.", Toast.LENGTH_SHORT).show()
+                if (success) {
+                    Log.d("LoginActivity", "Puter.js sign-in successful")
+                    startPostAuthFlow()
+                } else {
+                    Log.w("LoginActivity", "Puter.js sign-in failed", throwable)
+                    Toast.makeText(this, "Authentication Failed: ${throwable?.message}", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        intent?.let { handleEmailLinkIntent(it) }
+        // Handle any authentication redirect if needed
     }
 
     override fun onStart() {
         super.onStart()
-        handleEmailLinkIntent(intent)
-    }
-
-    private fun handleEmailLinkIntent(intent: Intent) {
-        // Handle email link sign-in with puter.js
-        Log.d("LoginActivity", "Handling email link intent with puter.js")
-        val data = intent.data?.toString() ?: return
-        Log.d("LoginActivity", "Email link data: $data")
-        // For puter.js, email link handling would be different
+        // Check if user is already signed in
+        puterManager.isSignedIn().whenComplete { signedIn, throwable ->
+            if (signedIn) {
+                runOnUiThread {
+                    startPostAuthFlow()
+                }
+            }
+        }
     }
 
     private fun startPostAuthFlow() {
