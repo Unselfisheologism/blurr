@@ -68,7 +68,7 @@ class LoginActivity : AppCompatActivity() {
         
         try {
             val customTabsIntent = CustomTabsIntent.Builder()
-                .setToolbarColor(ContextCompat.getColor(this, R.color.design_default_color_primary))
+                .setToolbarColor(ContextCompat.getColor(this, android.R.color.holo_blue_dark))
                 .build()
             
             Log.d("LoginActivity", "Launching Custom Tabs for authentication")
