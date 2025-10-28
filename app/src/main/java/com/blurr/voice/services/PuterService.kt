@@ -663,7 +663,6 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-}
 
     inner class AndroidInterface {
         @JavascriptInterface
