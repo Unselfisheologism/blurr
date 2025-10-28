@@ -248,6 +248,11 @@
         // Authentication functions
         async function puterAuthSignIn() {
             try {
+                // This will trigger the authentication flow which will be intercepted by the Android WebView
+                // The actual authentication will happen in Chrome Custom Tabs
+                console.log("Triggering Puter authentication...");
+                
+                // The puter.auth.signIn() will try to open a popup which will be intercepted by Android
                 const response = await puter.auth.signIn();
                 return response;
             } catch (error) {
@@ -287,22 +292,23 @@
 
         // Handle responses back to Android
         function handleResponse(response, callbackId) {
-            if (window.Android) {
-                window.Android.onAIResponse(JSON.stringify(response), callbackId);
+            if (window.AndroidInterface) {
+                window.AndroidInterface.onAIResponse(JSON.stringify(response), callbackId);
             }
         }
 
         function handleError(error, callbackId) {
-            if (window.Android) {
-                window.Android.onAIError(error.message, callbackId);
+            if (window.AndroidInterface) {
+                window.AndroidInterface.onAIError(error.message, callbackId);
             }
         }
 
         // Listen for auth events and notify Android
         if (puter.auth) {
+            // Set up an event listener for authentication state changes
             puter.auth.onAuth = function(user) {
-                if (window.Android) {
-                    window.Android.onAuthSuccess(JSON.stringify(user));
+                if (window.AndroidInterface) {
+                    window.AndroidInterface.onAuthSuccess(JSON.stringify(user));
                 }
             };
         }

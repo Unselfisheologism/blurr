@@ -59,12 +59,12 @@ class PuterService : Service() {
                         if (url?.startsWith(AUTH_REDIRECT_URI) == true) {
                             handleAuthRedirect(url)
                             return true
+                        }
                         
                         // Intercept Puter.js authentication URL and redirect to Chrome Custom Tabs
                         if (url?.contains("puter.com/auth") == true || url?.contains("puter.com/login") == true) {
                             openAuthInCustomTab(url)
                             return true
-                        }
                         }
 
                         return false
@@ -77,29 +77,8 @@ class PuterService : Service() {
                     }
                 }
 
-                    override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean {
-                        return false
-                    }
                 webChromeClient = object : WebChromeClient() {
                     override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean {
-                        // Intercept popup windows and redirect to Chrome Custom Tabs
-                        val transport = resultMsg?.obj as? WebView.WebViewTransport
-                        if (transport != null) {
-                            val newWebView = transport.webView
-                            
-                            // Get the URL that would be loaded in the popup
-                            val popupUrl = newWebView?.url
-                            
-                            // Close the popup WebView
-                            newWebView?.destroy()
-                            
-                            // Open the URL in Chrome Custom Tabs instead
-                            if (popupUrl != null && (popupUrl.contains("puter.com/auth") || popupUrl.contains("puter.com/login"))) {
-                                openAuthInCustomTab(popupUrl)
-                                return true
-                            }
-                        }
-                        
                         return false
                     }
                     
