@@ -10,7 +10,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.blurr.voice.activities.PuterAuthActivity
 import com.blurr.voice.utilities.OnboardingManager
 import com.blurr.voice.utilities.UserProfileManager
 import com.blurr.voice.managers.PuterManager
@@ -49,42 +48,32 @@ class LoginActivity : AppCompatActivity() {
         loadingText.visibility = View.VISIBLE
         puterSignInButton.isEnabled = false
 
-        Log.d("LoginActivity", "Starting Puter.js sign-in")
+        Log.d("LoginActivity", "Starting Puter.js sign-in via puter.auth.signIn()")
 
-        // Launch PuterAuthActivity for authentication
-        val intent = Intent(this, PuterAuthActivity::class.java).apply {
-            putExtra("auth_url", "https://puter.com/auth") // Replace with actual auth URL if needed
-        }
-        startActivityForResult(intent, REQUEST_CODE_PUTER_AUTH)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        
-        if (requestCode == REQUEST_CODE_PUTER_AUTH) {
-            progressBar.visibility = View.GONE
-            loadingText.visibility = View.GONE
-            puterSignInButton.isEnabled = true
-            
-            if (resultCode == RESULT_OK) {
-                // Authentication was successful
-                Log.d("LoginActivity", "Puter.js sign-in successful")
-                startPostAuthFlow()
-            } else {
-                // Authentication failed or was cancelled
-                Log.w("LoginActivity", "Puter.js sign-in failed or cancelled")
-                Toast.makeText(this, "Authentication failed or cancelled", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    override fun onStart() {
-        super.onStart()
-        // Check if user is already signed in
-        puterManager.isSignedIn().whenComplete { signedIn, throwable ->
-            if (signedIn) {
+        // Trigger authentication through the PuterService by calling puter.auth.signIn()
+        lifecycleScope.launch {
+            try {
+                val success = puterManager.signIn().await()
                 runOnUiThread {
-                    startPostAuthFlow()
+                    progressBar.visibility = View.GONE
+                    loadingText.visibility = View.GONE
+                    puterSignInButton.isEnabled = true
+                    
+                    if (success) {
+                        Log.d("LoginActivity", "Puter.js sign-in successful")
+                        startPostAuthFlow()
+                    } else {
+                        Log.w("LoginActivity", "Puter.js sign-in failed")
+                        Toast.makeText(this@LoginActivity, "Authentication failed", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("LoginActivity", "Error during authentication", e)
+                runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    loadingText.visibility = View.GONE
+                    puterSignInButton.isEnabled = true
+                    Toast.makeText(this@LoginActivity, "Authentication error: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
