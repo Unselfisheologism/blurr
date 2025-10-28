@@ -669,18 +669,44 @@ class PuterService : Service() {
         fun onAIResponse(response: String, callbackId: String) {
             Log.d(TAG, "Received response from Puter.js: $response, callbackId: $callbackId")
             // Handle the response based on callbackId
+            when (callbackId) {
+                "gettaskhistory" -> handleTaskHistoryResponse(response)
+                "savetasktostore" -> handleTaskSaveResponse(response)
+                else -> Log.d(TAG, "Unhandled callbackId: $callbackId")
+            }
         }
 
         @JavascriptInterface
         fun onAIError(error: String, callbackId: String) {
             Log.e(TAG, "Received error from Puter.js: $error, callbackId: $callbackId")
             // Handle the error based on callbackId
+            when (callbackId) {
+                "gettaskhistory" -> handleTaskHistoryError(error)
+                "savetasktostore" -> handleTaskSaveError(error)
+                else -> Log.d(TAG, "Unhandled error callbackId: $callbackId")
+            }
         }
 
         @JavascriptInterface
         fun onAuthSuccess(userJson: String) {
             Log.d(TAG, "Authentication successful: $userJson")
             // Notify the app that authentication was successful
+        }
+        
+        private fun handleTaskHistoryResponse(response: String) {
+            Log.d(TAG, "Task history response: $response")
+        }
+        
+        private fun handleTaskSaveResponse(response: String) {
+            Log.d(TAG, "Task save response: $response")
+        }
+        
+        private fun handleTaskHistoryError(error: String) {
+            Log.e(TAG, "Task history error: $error")
+        }
+        
+        private fun handleTaskSaveError(error: String) {
+            Log.e(TAG, "Task save error: $error")
         }
     }
 

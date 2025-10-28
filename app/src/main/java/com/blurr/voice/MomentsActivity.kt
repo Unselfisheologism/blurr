@@ -57,11 +57,11 @@ class MomentsActivity : BaseNavigationActivity() {
             try {
                 // Get task history from puter.js key-value store - use a method that exists
                 val taskHistoryFuture = puterManager.getTaskHistoryFromKvStore()
-                val taskHistory = taskHistoryFuture.await()
+                val taskHistory: List<TaskHistoryItem> = taskHistoryFuture.await()
                 
                 if (taskHistory.isNotEmpty()) {
                     // Sort by startedAt in descending order (most recent first)
-                    val sortedTaskHistory = taskHistory.sortedByDescending { taskItem ->
+                    val sortedTaskHistory = taskHistory.sortedByDescending { taskItem: TaskHistoryItem ->
                         taskItem.startedAt ?: 0
                     }
                     

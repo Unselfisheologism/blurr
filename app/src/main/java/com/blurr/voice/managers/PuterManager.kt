@@ -502,6 +502,7 @@ class PuterManager private constructor(private val context: Context) {
         }
 
         return future
+    }
     
     fun getTaskHistoryFromKvStore(): CompletableFuture<List<TaskHistoryItem>> {
         val future = CompletableFuture<List<TaskHistoryItem>>()
@@ -566,7 +567,6 @@ class PuterManager private constructor(private val context: Context) {
         }
 
         return future
-    }
     }
 
     // Additional helper methods
