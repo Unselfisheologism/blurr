@@ -18,6 +18,7 @@ class PuterService : Service() {
     private val binder = PuterBinder()
     private var pendingAuthUrl: String? = null
     private var authCallback: ((String?) -> Unit)? = null
+    private var signInCallback: ((Boolean) -> Unit)? = null
 
     companion object {
         const val TAG = "PuterService"
@@ -112,6 +113,10 @@ class PuterService : Service() {
         val token = extractTokenFromUrl(redirectUrl)
         authCallback?.invoke(token)
         authCallback = null
+        
+        // Notify the sign in callback that authentication was successful
+        signInCallback?.invoke(true)
+        signInCallback = null
     }
 
     private fun extractTokenFromUrl(url: String): String? {
@@ -342,9 +347,7 @@ class PuterService : Service() {
 
     fun puterAuthSignIn(callback: (Boolean) -> Unit) {
         // Store the callback for later use
-        authCallback = { token ->
-            callback(token != null)
-        }
+        signInCallback = callback
 
         webView?.post {
             val jsCode = """
@@ -643,7 +646,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     fun puterSaveTaskToKvStore(key: String, taskData: String, callback: (String?) -> Unit) {
         webView?.post {
             val jsCode = """
@@ -708,6 +711,10 @@ class PuterService : Service() {
                     Log.e(TAG, "Auth error: $error")
                     authCallback?.invoke(null)
                     authCallback = null
+                    
+                    // Notify the sign in callback that authentication failed
+                    signInCallback?.invoke(false)
+                    signInCallback = null
                 }
                 "authcheck" -> {
                     // Handle authentication check error
@@ -736,6 +743,10 @@ class PuterService : Service() {
             // Notify the app that authentication was successful
             authCallback?.invoke(userJson)
             authCallback = null
+            
+            // Notify the sign in callback that authentication was successful
+            signInCallback?.invoke(true)
+            signInCallback = null
         }
         
         private fun handleTaskHistoryResponse(response: String) {

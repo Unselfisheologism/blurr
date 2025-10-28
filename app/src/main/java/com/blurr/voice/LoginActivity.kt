@@ -10,6 +10,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.blurr.voice.activities.PuterAuthActivity
 import com.blurr.voice.utilities.OnboardingManager
 import com.blurr.voice.utilities.UserProfileManager
 import com.blurr.voice.managers.PuterManager
@@ -22,6 +23,10 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var puterSignInButton: Button
     private lateinit var progressBar: ProgressBar
     private lateinit var loadingText: TextView
+    
+    companion object {
+        const val REQUEST_CODE_PUTER_AUTH = 1001
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,28 +51,31 @@ class LoginActivity : AppCompatActivity() {
 
         Log.d("LoginActivity", "Starting Puter.js sign-in")
 
-        // Use puter.js authentication functionality
-        val signInFuture = puterManager.signIn()
-        signInFuture.whenComplete { success, throwable ->
-            runOnUiThread {
-                progressBar.visibility = View.GONE
-                loadingText.visibility = View.GONE
-                puterSignInButton.isEnabled = true
-
-                if (success) {
-                    Log.d("LoginActivity", "Puter.js sign-in successful")
-                    startPostAuthFlow()
-                } else {
-                    Log.w("LoginActivity", "Puter.js sign-in failed", throwable)
-                    Toast.makeText(this, "Authentication Failed: ${throwable?.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
+        // Launch PuterAuthActivity for authentication
+        val intent = Intent(this, PuterAuthActivity::class.java).apply {
+            putExtra("auth_url", "https://puter.com/auth") // Replace with actual auth URL if needed
         }
+        startActivityForResult(intent, REQUEST_CODE_PUTER_AUTH)
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        // Handle any authentication redirect if needed
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        if (requestCode == REQUEST_CODE_PUTER_AUTH) {
+            progressBar.visibility = View.GONE
+            loadingText.visibility = View.GONE
+            puterSignInButton.isEnabled = true
+            
+            if (resultCode == RESULT_OK) {
+                // Authentication was successful
+                Log.d("LoginActivity", "Puter.js sign-in successful")
+                startPostAuthFlow()
+            } else {
+                // Authentication failed or was cancelled
+                Log.w("LoginActivity", "Puter.js sign-in failed or cancelled")
+                Toast.makeText(this, "Authentication failed or cancelled", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onStart() {
