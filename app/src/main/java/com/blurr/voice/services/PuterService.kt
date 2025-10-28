@@ -59,6 +59,12 @@ class PuterService : Service() {
                         if (url?.startsWith(AUTH_REDIRECT_URI) == true) {
                             handleAuthRedirect(url)
                             return true
+                        
+                        // Intercept Puter.js authentication URL and redirect to Chrome Custom Tabs
+                        if (url?.contains("puter.com/auth") == true || url?.contains("puter.com/login") == true) {
+                            openAuthInCustomTab(url)
+                            return true
+                        }
                         }
 
                         return false
@@ -71,6 +77,9 @@ class PuterService : Service() {
                     }
                 }
 
+                    override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean {
+                        return false
+                    }
                 webChromeClient = object : WebChromeClient() {
                     override fun onCreateWindow(view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?): Boolean {
                         // Intercept popup windows and redirect to Chrome Custom Tabs
