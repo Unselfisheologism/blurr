@@ -25,6 +25,9 @@ class LoginActivity : AppCompatActivity() {
     
     companion object {
         const val TAG = "LoginActivity"
+        // NOTE: This client ID needs to be configured with your actual Puter application
+        // You need to register your app with Puter to get a real client ID
+        private const val PUTER_CLIENT_ID = "YOUR_ACTUAL_PUTER_CLIENT_ID"  // Replace with your actual client ID
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,7 +55,7 @@ class LoginActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleAuthResponse()
+        handleAuthResponse(intent)
     }
 
     private fun signInWithPuter() {
@@ -60,15 +63,21 @@ class LoginActivity : AppCompatActivity() {
         loadingText.visibility = View.VISIBLE
         puterSignInButton.isEnabled = false
         
-        // CORRECT: Directly launch Custom Tabs with authentication URL
-        val authUrl = "https://puter.com/auth?client_id=YOUR_CLIENT_ID&redirect_uri=myblurr://auth"
-        
+        // Use the correct Puter authentication URL
+        // Based on the documentation, Puter uses URLs like https://puter.com/action/sign-in for authentication
+        // For mobile, we should not use embedded_in_popup=true parameter
+        val authUrl = "https://puter.com/action/sign-in?" +
+                "client_id=$PUTER_CLIENT_ID&" +
+                "redirect_uri=myblurr://auth&" +
+                "response_type=token&" +
+                "scope=full"
+
         try {
             val customTabsIntent = CustomTabsIntent.Builder()
                 .setToolbarColor(ContextCompat.getColor(this, R.color.primary))
                 .build()
             
-            Log.d("LoginActivity", "Launching Custom Tabs for authentication")
+            Log.d("LoginActivity", "Launching Custom Tabs for authentication: $authUrl")
             customTabsIntent.launchUrl(this, Uri.parse(authUrl))
         } catch (e: Exception) {
             Log.e("LoginActivity", "Failed to launch Custom Tabs", e)
@@ -81,15 +90,34 @@ class LoginActivity : AppCompatActivity() {
         }
     }
     
-    private fun handleAuthResponse() {
-        val intent = intent
-        val data = intent.data
+    private fun handleAuthResponse(intent: Intent? = null) {
+        val data = intent?.data ?: this.intent.data
         Log.d("LoginActivity", "Received intent: $data")
         
         // Check if this is our authentication callback
         if (data != null && data.toString().startsWith("myblurr://auth")) {
-            val token = data.getQueryParameter("token")
+            // Extract the token from the fragment (for implicit flow) or query parameters
+            val fragment = data.fragment
+            var token: String? = null
+            
+            // For implicit flow, the token is in the fragment
+            if (!fragment.isNullOrEmpty()) {
+                val params = fragment.split("&")
+                for (param in params) {
+                    if (param.startsWith("access_token=")) {
+                        token = param.substring("access_token=".length)
+                        break
+                    }
+                }
+            }
+            
+            // If not in fragment, check query parameters (for authorization code flow)
+            if (token == null) {
+                token = data.getQueryParameter("access_token")
+            }
+            
             val error = data.getQueryParameter("error")
+            val errorDescription = data.getQueryParameter("error_description")
             
             if (!token.isNullOrEmpty()) {
                 Log.d("LoginActivity", "Authentication successful, token received")
@@ -97,6 +125,9 @@ class LoginActivity : AppCompatActivity() {
                 val editor = getSharedPreferences("auth", MODE_PRIVATE).edit()
                 editor.putString("puter_token", token)
                 editor.apply()
+                
+                // Initialize Puter with the token
+                puterManager.initializeWithToken(token)
                 
                 // Proceed to main activity
                 runOnUiThread {
@@ -106,12 +137,20 @@ class LoginActivity : AppCompatActivity() {
                     startPostAuthFlow()
                 }
             } else if (!error.isNullOrEmpty()) {
-                Log.e("LoginActivity", "Authentication error: $error")
+                Log.e("LoginActivity", "Authentication error: $error - $errorDescription")
                 runOnUiThread {
                     progressBar.visibility = View.GONE
                     loadingText.visibility = View.GONE
                     puterSignInButton.isEnabled = true
-                    Toast.makeText(this, "Authentication failed: $error", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Authentication failed: $error - $errorDescription", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                // No token and no error - might be a cancelled auth
+                Log.d("LoginActivity", "No token received, authentication may have been cancelled")
+                runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    loadingText.visibility = View.GONE
+                    puterSignInButton.isEnabled = true
                 }
             }
         }

@@ -72,7 +72,9 @@ class PuterManager private constructor(private val context: Context) {
         val future = CompletableFuture<Boolean>()
         
         // Launch the authentication URL in Custom Tabs
-        val authUrl = "https://puter.com/auth?client_id=YOUR_CLIENT_ID&redirect_uri=myblurr://auth"
+        // This is now handled in LoginActivity with the correct URL
+        // The correct URL format for Puter authentication would be:
+        // https://puter.com/api/auth/oauth/authorize?client_id=CLIENT_ID&redirect_uri=REDIRECT_URI&response_type=token&scope=full
         
         // If service is bound, notify the service to handle the URL
         if (isBound) {
@@ -85,6 +87,44 @@ class PuterManager private constructor(private val context: Context) {
         future.complete(true)
         
         return future
+    }
+    
+    // Initialize Puter with an authentication token
+    fun initializeWithToken(token: String) {
+        // Store the token for future use
+        val editor = context.getSharedPreferences("auth", Context.MODE_PRIVATE).edit()
+        editor.putString("puter_token", token)
+        editor.apply()
+        
+        // If service is bound, we might need to pass the token to it
+        // This would depend on how the PuterService handles authenticated sessions
+        if (isBound) {
+            // We could potentially send the token to the service
+            // puterService?.setAuthToken(token)
+        }
+    }
+    
+    // Get the stored authentication token
+    fun getAuthToken(): String? {
+        val prefs = context.getSharedPreferences("auth", Context.MODE_PRIVATE)
+        return prefs.getString("puter_token", null)
+    }
+    
+    // Check if user is authenticated by checking for stored token
+    fun isAuthenticated(): Boolean {
+        return getAuthToken() != null
+    }
+    
+    // Sign out functionality
+    fun signOut() {
+        val editor = context.getSharedPreferences("auth", Context.MODE_PRIVATE).edit()
+        editor.remove("puter_token")
+        editor.apply()
+        
+        if (isBound) {
+            // We could potentially notify the service to clear the session
+            // puterService?.clearAuthToken()
+        }
     }
 
     // Chat functionality
