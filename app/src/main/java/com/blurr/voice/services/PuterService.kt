@@ -78,6 +78,10 @@ class PuterService : Service() {
         }
     }
 
+    fun setAuthUrlCallback(callback: (String) -> Unit) {
+        authUrlCallback = callback
+    }
+    
     fun puterAuthIsSignedIn(callback: (Boolean) -> Unit) {
         webView?.post {
             val jsCode = """
