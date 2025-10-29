@@ -41,6 +41,9 @@ class LoginActivity : AppCompatActivity() {
         loadingText = findViewById(R.id.loadingText)
         puterManager = PuterManager.getInstance(this)
 
+        // Initialize the PuterManager to bind the service
+        puterManager.initialize()
+
         // Set click listener for the Puter sign-in button
         puterSignInButton.setOnClickListener {
             signInWithPuter()
@@ -61,7 +64,7 @@ class LoginActivity : AppCompatActivity() {
             // Retry periodically until service is bound
             val handler = android.os.Handler(android.os.Looper.getMainLooper())
             var retryCount = 0
-            val maxRetries = 20 // 20 * 10ms = 200ms max wait time
+            val maxRetries = 60 // 60 * 100ms = 6 seconds max wait time
             
             val retryRunnable = object : Runnable {
                 override fun run() {
@@ -69,7 +72,7 @@ class LoginActivity : AppCompatActivity() {
                         setupAuthUrlCallback()
                     } else if (retryCount < maxRetries) {
                         retryCount++
-                        handler.postDelayed(this, 10)
+                        handler.postDelayed(this, 100) // Increased delay to 100ms for better reliability
                     } else {
                         Log.e(TAG, "PuterService not bound after maximum retries")
                         runOnUiThread {
