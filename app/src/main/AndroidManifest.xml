@@ -50,9 +50,10 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <!-- CRITICAL: Use YOUR OWN custom scheme, NOT puter.com -->
                 <data
-                    android:scheme="blurr"
-                    android:host="puter-auth-callback" />
+                    android:scheme="myblurr"
+                    android:host="auth" />
             </intent-filter>
         </activity>
         <activity android:name=".ChatActivity" android:exported="true" android:label="@string/app_name" android:theme="@style/Theme.Blurr" android:screenOrientation="portrait" />

@@ -243,22 +243,6 @@ class PuterManager private constructor(private val context: Context) {
         return future
     }
 
-    // Authentication sign in functionality - now handled by LoginActivity with Custom Tabs
-    fun signIn(): CompletableFuture<Boolean> {
-        val future = CompletableFuture<Boolean>()
-        
-        // Trigger the authentication flow in the WebView
-        puterService?.puterAuthSignIn { success ->
-            if (success) {
-                future.complete(true)
-            } else {
-                future.complete(false)
-            }
-        }
-        
-        return future
-    }
-
     // Authentication check if signed in functionality
     fun isSignedIn(): CompletableFuture<Boolean> {
         val future = CompletableFuture<Boolean>()
