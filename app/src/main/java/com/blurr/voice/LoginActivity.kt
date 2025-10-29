@@ -2,7 +2,6 @@ package com.blurr.voice
 
 import android.content.Intent
 import android.net.Uri
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -52,18 +51,9 @@ class LoginActivity : AppCompatActivity() {
         
         // Register the auth URL callback with the PuterService after service is connected
         // We need to wait for the service to be connected before setting the callback
-        if (puterManager.isServiceBound) {
-            setupAuthUrlCallback()
-        } else {
-            // If service is not yet bound, we'll try again after binding
-            // This might require a small delay or checking mechanism
-            // For now, we'll just try to set it up after a short delay
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                if (puterManager.isServiceBound) {
-                    setupAuthUrlCallback()
-                }
-            }, 100)
-        }
+        setupAuthUrlCallbackWithRetry()
+    }
+    
     private fun setupAuthUrlCallbackWithRetry() {
         if (puterManager.isServiceBound) {
             setupAuthUrlCallback()
@@ -71,15 +61,15 @@ class LoginActivity : AppCompatActivity() {
             // Retry periodically until service is bound
             val handler = android.os.Handler(android.os.Looper.getMainLooper())
             var retryCount = 0
-            val maxRetries = 20 // 20 * 100ms = 2 seconds max wait time
+            val maxRetries = 20 // 20 * 10ms = 200ms max wait time
             
             val retryRunnable = object : Runnable {
                 override fun run() {
                     if (puterManager.isServiceBound) {
                         setupAuthUrlCallback()
-                    } else if (retryCount &lt; maxRetries) {
+                    } else if (retryCount < maxRetries) {
                         retryCount++
-                        handler.postDelayed(this, 100)
+                        handler.postDelayed(this, 10)
                     } else {
                         Log.e(TAG, "PuterService not bound after maximum retries")
                         runOnUiThread {
@@ -92,8 +82,7 @@ class LoginActivity : AppCompatActivity() {
             handler.post(retryRunnable)
         }
     }
-    }
-    
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
