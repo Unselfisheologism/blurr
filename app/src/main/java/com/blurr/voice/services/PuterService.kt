@@ -16,6 +16,7 @@ class PuterService : Service() {
     private val binder = PuterBinder()
     private var signInCallback: ((Boolean) -> Unit)? = null
     private var authUrlCallback: ((String) -> Unit)? = null
+    private val callbacks = mutableMapOf<String, (String?) -> Unit>()
 
     companion object {
         const val TAG = "PuterService"
@@ -171,7 +172,568 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
+
+    // Chat functionality
+    fun executePuterChat(query: String, callback: (String?) -> Unit) {
+        val callbackId = "chat_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterChat('$query')
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // Text to image functionality
+    fun executePuterTxt2Img(prompt: String, callback: (String?) -> Unit) {
+        val callbackId = "txt2img_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterTxt2Img('$prompt')
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // Image to text functionality
+    fun executePuterImg2Txt(imageData: String, callback: (String?) -> Unit) {
+        val callbackId = "img2txt_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterImg2Txt('$imageData')
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // Text to speech functionality
+    fun executePuterTxt2Speech(text: String, callback: (String?) -> Unit) {
+        val callbackId = "txt2speech_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterTxt2Speech('$text')
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // KV store get functionality
+    fun puterKvGet(key: String, callback: (String?) -> Unit) {
+        val callbackId = "kvget_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterKvGet('$key')
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // KV store set functionality
+    fun puterKvSet(key: String, value: String, callback: (String?) -> Unit) {
+        val callbackId = "kvset_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterKvSet('$key', '$value')
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // KV store delete functionality
+    fun puterKvDel(key: String, callback: (String?) -> Unit) {
+        val callbackId = "kvdeld_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterKvDel('$key')
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // KV store list functionality
+    fun puterKvList(pattern: String, returnValues: Boolean, callback: (String?) -> Unit) {
+        val callbackId = "kvlist_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterKvList('$pattern', $returnValues)
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // KV store increment functionality
+    fun puterKvIncr(key: String, amount: Int, callback: (String?) -> Unit) {
+        val callbackId = "kvincr_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterKvIncr('$key', $amount)
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // KV store decrement functionality
+    fun puterKvDecr(key: String, amount: Int, callback: (String?) -> Unit) {
+        val callbackId = "kvdecr_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterKvDecr('$key', $amount)
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // KV store flush functionality
+    fun puterKvFlush(callback: (String?) -> Unit) {
+        val callbackId = "kvflush_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterKvFlush()
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // Chat streaming functionality
+    fun executePuterChatStream(query: String, onChunkCallback: (String) -> Unit, callback: (String?) -> Unit) {
+        val callbackId = "chatstream_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterChatStream('$query', function(chunk) {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify({type: 'chunk', data: chunk}), '$callbackId');
+                    }
+                })
+                .then(response => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify({type: 'complete', data: response}), '$callbackId');
+                    }
+                })
+                .catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, '$callbackId');
+                    }
+                });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // File system write functionality
+    fun executePuterFsWrite(path: String, data: String, optionsJson: String, callback: (String?) -> Unit) {
+        val callbackId = "fswrite_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterFsWrite('$path', '$data', JSON.parse('$optionsJson'))
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // File system read functionality
+    fun executePuterFsRead(path: String, optionsJson: String, callback: (String?) -> Unit) {
+        val callbackId = "fsread_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterFsRead('$path', JSON.parse('$optionsJson'))
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // File system mkdir functionality
+    fun executePuterFsMkdir(path: String, optionsJson: String, callback: (String?) -> Unit) {
+        val callbackId = "fsmkdir_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterFsMkdir('$path', JSON.parse('$optionsJson'))
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // File system readdir functionality
+    fun executePuterFsReaddir(path: String, callback: (String?) -> Unit) {
+        val callbackId = "fsreaddir_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterFsReaddir('$path')
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // File system delete functionality
+    fun executePuterFsDelete(path: String, optionsJson: String, callback: (String?) -> Unit) {
+        val callbackId = "fsdelete_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterFsDelete('$path', JSON.parse('$optionsJson'))
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // File system move functionality
+    fun executePuterFsMove(source: String, destination: String, optionsJson: String, callback: (String?) -> Unit) {
+        val callbackId = "fsmove_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterFsMove('$source', '$destination', JSON.parse('$optionsJson'))
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // File system copy functionality
+    fun executePuterFsCopy(source: String, destination: String, optionsJson: String, callback: (String?) -> Unit) {
+        val callbackId = "fscopy_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterFsCopy('$source', '$destination', JSON.parse('$optionsJson'))
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // File system rename functionality
+    fun executePuterFsRename(path: String, newName: String, callback: (String?) -> Unit) {
+        val callbackId = "fsrename_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterFsRename('$path', '$newName')
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // File system stat functionality
+    fun executePuterFsStat(path: String, callback: (String?) -> Unit) {
+        val callbackId = "fsstat_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterFsStat('$path')
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // File system space functionality
+    fun executePuterFsSpace(callback: (String?) -> Unit) {
+        val callbackId = "fsspace_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterFsSpace()
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // Task history functionality
+    fun puterGetTaskHistoryFromKvStore(callback: (String?) -> Unit) {
+        val callbackId = "taskhistory_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterKvList('task_*', true)
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // Save task to KV store functionality
+    fun puterSaveTaskToKvStore(key: String, taskDataJson: String, callback: (String?) -> Unit) {
+        val callbackId = "savetask_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puterKvSet('$key', JSON.parse('$taskDataJson'))
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
     
+    // Helper method to find a callback ID by its type/prefix
+    private fun findCallbackIdByType(type: String): String? {
+        return callbacks.keys.find { it.startsWith(type) }
+    }
+
     inner class AndroidInterface {
         @JavascriptInterface
         fun onAIResponse(response: String, callbackId: String) {
@@ -212,7 +774,9 @@ class PuterService : Service() {
                     }
                 }
                 else -> {
-                    Log.d(TAG, "Unhandled callbackId: $callbackId")
+                    Log.d(TAG, "Received response for callback: $callbackId, response: $response")
+                    // For all responses, call the callback if it exists using the callbackId directly
+                    callbacks.remove(callbackId)?.invoke(response)
                 }
             }
         }
@@ -239,7 +803,9 @@ class PuterService : Service() {
                     signInCallback = null
                 }
                 else -> {
-                    Log.d(TAG, "Unhandled error callbackId: $callbackId")
+                    Log.e(TAG, "Received error for callback: $callbackId, error: $error")
+                    // For all errors, call the callback if it exists using the callbackId directly
+                    callbacks.remove(callbackId)?.invoke(null)
                 }
             }
         }

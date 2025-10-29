@@ -124,7 +124,6 @@ class LoginActivity : AppCompatActivity() {
         runOnUiThread {
             try {
                 val customTabsIntent = CustomTabsIntent.Builder()
-                    .setToolbarColor(ContextCompat.getColor(this, R.color.design_default_color_primary))
                     .build()
                 
                 Log.d(TAG, "Launching Custom Tabs for authentication: $authUrl")
