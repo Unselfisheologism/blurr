@@ -44,7 +44,7 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
-        <activity android:name=".LoginActivity" android:exported="false" android:label="Login_activity" android:theme="@style/Theme.Blurr" android:screenOrientation="portrait">
+        <activity android:name=".LoginActivity" android:exported="true" android:label="Login_activity" android:theme="@style/Theme.Blurr" android:screenOrientation="portrait">
             <!-- Deep link handler for authentication callback -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />

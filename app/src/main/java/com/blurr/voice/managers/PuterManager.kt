@@ -55,6 +55,13 @@ class PuterManager private constructor(private val context: Context) {
             isBound = false
         }
     }
+    
+    val isServiceBound: Boolean
+        get() = this.isBound
+    
+    fun getPuterService(): PuterService? {
+        return puterService
+    }
 
     private fun getNextCallbackId(): String {
         return "callback_${callbackCounter++}"
@@ -236,12 +243,19 @@ class PuterManager private constructor(private val context: Context) {
         return future
     }
 
-    // Authentication sign in functionality - now handled by LoginActivity directly
+    // Authentication sign in functionality - now handled by LoginActivity with Custom Tabs
     fun signIn(): CompletableFuture<Boolean> {
         val future = CompletableFuture<Boolean>()
-        // Since authentication is handled directly by LoginActivity with Custom Tabs,
-        // we just return true to indicate the process has started
-        future.complete(true)
+        
+        // Trigger the authentication flow in the WebView
+        puterService?.puterAuthSignIn { success ->
+            if (success) {
+                future.complete(true)
+            } else {
+                future.complete(false)
+            }
+        }
+        
         return future
     }
 

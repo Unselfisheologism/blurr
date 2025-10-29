@@ -2,6 +2,7 @@ package com.blurr.voice
 
 import android.content.Intent
 import android.net.Uri
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -18,7 +19,6 @@ import com.blurr.voice.utilities.UserProfileManager
 import com.blurr.voice.managers.PuterManager
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.future.await
-import android.content.SharedPreferences
 
 class LoginActivity : AppCompatActivity() {
 
@@ -29,6 +29,7 @@ class LoginActivity : AppCompatActivity() {
     
     companion object {
         const val REQUEST_CODE_PUTER_AUTH = 1001
+        const val TAG = "LoginActivity"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +49,49 @@ class LoginActivity : AppCompatActivity() {
         
         // Handle authentication response from Custom Tabs
         handleAuthResponse(intent)
+        
+        // Register the auth URL callback with the PuterService after service is connected
+        // We need to wait for the service to be connected before setting the callback
+        if (puterManager.isServiceBound) {
+            setupAuthUrlCallback()
+        } else {
+            // If service is not yet bound, we'll try again after binding
+            // This might require a small delay or checking mechanism
+            // For now, we'll just try to set it up after a short delay
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                if (puterManager.isServiceBound) {
+                    setupAuthUrlCallback()
+                }
+            }, 100)
+        }
+    private fun setupAuthUrlCallbackWithRetry() {
+        if (puterManager.isServiceBound) {
+            setupAuthUrlCallback()
+        } else {
+            // Retry periodically until service is bound
+            val handler = android.os.Handler(android.os.Looper.getMainLooper())
+            var retryCount = 0
+            val maxRetries = 20 // 20 * 100ms = 2 seconds max wait time
+            
+            val retryRunnable = object : Runnable {
+                override fun run() {
+                    if (puterManager.isServiceBound) {
+                        setupAuthUrlCallback()
+                    } else if (retryCount &lt; maxRetries) {
+                        retryCount++
+                        handler.postDelayed(this, 100)
+                    } else {
+                        Log.e(TAG, "PuterService not bound after maximum retries")
+                        runOnUiThread {
+                            puterSignInButton.isEnabled = true
+                            Toast.makeText(this@LoginActivity, "Service not available. Please try again.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+            handler.post(retryRunnable)
+        }
+    }
     }
     
     override fun onNewIntent(intent: Intent) {
@@ -61,32 +105,56 @@ class LoginActivity : AppCompatActivity() {
         loadingText.visibility = View.VISIBLE
         puterSignInButton.isEnabled = false
         
-        // THIS IS THE CRITICAL CHANGE:
-        // Don't try to trigger authentication through WebView
-        // Instead, directly launch Custom Tabs with the authentication URL
-        val authUrl = "https://puter.com/action/sign-in"
+        Log.d(TAG, "Starting Puter.js sign-in via Custom Tabs")
         
-        try {
-            val customTabsIntent = CustomTabsIntent.Builder()
-                .setToolbarColor(ContextCompat.getColor(this, android.R.color.holo_blue_dark))
-                .build()
-            
-            Log.d("LoginActivity", "Launching Custom Tabs for authentication")
-            customTabsIntent.launchUrl(this, Uri.parse(authUrl))
-        } catch (e: Exception) {
-            Log.e("LoginActivity", "Failed to launch Custom Tabs", e)
+        // Launch the authentication flow through the PuterService
+        puterManager.signIn().thenApply { result ->
+            Log.d(TAG, "Puter sign in process started: $result")
+            // The actual authentication URL should be handled by the PuterService
+            // which intercepts it and sends it to Android for Custom Tabs
+        }.exceptionally { throwable ->
+            Log.e(TAG, "Error starting sign in", throwable)
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 loadingText.visibility = View.GONE
                 puterSignInButton.isEnabled = true
-                Toast.makeText(this, "Browser not available. Please install Chrome.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Error starting authentication: ${throwable.message}", Toast.LENGTH_LONG).show()
+            }
+            null
+        }
+    }
+    
+    private fun setupAuthUrlCallback() {
+        puterManager.getPuterService()?.setAuthUrlCallback { url ->
+            handleAuthUrlRequest(url)
+        }
+    }
+    
+    // Method to handle the authentication URL request from the PuterService
+    fun handleAuthUrlRequest(authUrl: String) {
+        runOnUiThread {
+            try {
+                val customTabsIntent = CustomTabsIntent.Builder()
+                    .setToolbarColor(ContextCompat.getColor(this, R.color.design_default_color_primary))
+                    .build()
+                
+                Log.d(TAG, "Launching Custom Tabs for authentication: $authUrl")
+                customTabsIntent.launchUrl(this, Uri.parse(authUrl))
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to launch Custom Tabs", e)
+                runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    loadingText.visibility = View.GONE
+                    puterSignInButton.isEnabled = true
+                    Toast.makeText(this, "Browser not available. Please install Chrome.", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
     
     private fun handleAuthResponse(intent: Intent) {
         val data = intent.data
-        Log.d("LoginActivity", "Received intent: $data")
+        Log.d(TAG, "Received intent: $data")
         
         // Check if this is our authentication callback
         if (data != null && data.toString().startsWith("blurr://puter-auth-callback")) {
@@ -94,7 +162,7 @@ class LoginActivity : AppCompatActivity() {
             val error = data.getQueryParameter("error")
             
             if (!token.isNullOrEmpty()) {
-                Log.d("LoginActivity", "Authentication successful, token received")
+                Log.d(TAG, "Authentication successful, token received")
                 // Save token securely
                 val editor = getSharedPreferences("auth", MODE_PRIVATE).edit()
                 editor.putString("puter_token", token)
@@ -108,12 +176,20 @@ class LoginActivity : AppCompatActivity() {
                     startPostAuthFlow()
                 }
             } else if (!error.isNullOrEmpty()) {
-                Log.e("LoginActivity", "Authentication error: $error")
+                Log.e(TAG, "Authentication error: $error")
                 runOnUiThread {
                     progressBar.visibility = View.GONE
                     loadingText.visibility = View.GONE
                     puterSignInButton.isEnabled = true
                     Toast.makeText(this, "Authentication failed: $error", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Log.e(TAG, "Unable to handle auth callback - no token or error provided")
+                runOnUiThread {
+                    progressBar.visibility = View.GONE
+                    loadingText.visibility = View.GONE
+                    puterSignInButton.isEnabled = true
+                    Toast.makeText(this, "Authentication failed: No token received", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -139,7 +215,7 @@ class LoginActivity : AppCompatActivity() {
                 }
                 finish()
             } catch (e: Exception) {
-                Log.e("LoginActivity", "Error getting user info", e)
+                Log.e(TAG, "Error getting user info", e)
                 Toast.makeText(this@LoginActivity, "Error getting user info", Toast.LENGTH_SHORT).show()
             }
         }

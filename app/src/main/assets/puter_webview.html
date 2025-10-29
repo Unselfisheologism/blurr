@@ -7,6 +7,28 @@
 </head>
 <body>
     <script>
+        // Override the puter.auth.signIn method to intercept the authentication flow
+        const originalSignIn = puter.auth.signIn;
+        puter.auth.signIn = function() {
+            return new Promise((resolve, reject) => {
+                // Store the resolver to be called later when authentication completes
+                window.__puterAuthCallback = resolve;
+                
+                // Trigger the original Puter.js sign in flow which will generate an auth URL
+                // that we'll intercept in the Android WebViewClient
+                try {
+                    originalSignIn.call(puter.auth);
+                } catch (error) {
+                    console.error("Error calling original sign in:", error);
+                    // If direct call doesn't work, we may need to trigger it differently
+                    // But the important part is that the URL will be generated and intercepted
+                }
+                
+                // Return a success indicator that the process has started
+                resolve({ status: "auth_started", message: "Authentication started" });
+            });
+        };
+
         // Bridge functions to interact with Puter.js from native Android code
         async function puterChat(query) {
             try {
@@ -248,10 +270,9 @@
         // Authentication functions
         async function puterAuthSignIn() {
             try {
-                // Since authentication is handled by LoginActivity directly with Custom Tabs,
-                // we just return a success indicator to prevent conflicts
-                console.log("Authentication flow initiated externally");
-                return { status: "auth_started", message: "Authentication flow initiated externally" };
+                // Call the overridden signIn method which will be intercepted
+                const result = await puter.auth.signIn();
+                return result;
             } catch (error) {
                 console.error('Auth Sign In error:', error);
                 throw error;
@@ -301,8 +322,34 @@
                 if (window.AndroidInterface) {
                     window.AndroidInterface.onAuthSuccess(JSON.stringify({token: token, status: "authenticated"}));
                 }
+                
+                // Resolve the stored callback if available
+                if (window.__puterAuthCallback) {
+                    window.__puterAuthCallback({token: token, status: "authenticated"});
+                    window.__puterAuthCallback = null;
+                }
             } else {
                 console.error("Unable to handle auth callback - no token provided");
+            }
+        }
+        
+        // Additional function to handle the auth URL request from JavaScript
+        function handleAuthUrlRequest(authUrl) {
+            console.log("Handling auth URL request:", authUrl);
+            // This function will be called when the JavaScript requests an auth URL
+            // to be handled by Android Custom Tabs
+            if (window.AndroidInterface) {
+                window.AndroidInterface.onAuthUrlRequested(authUrl);
+            }
+        }
+        
+        // Function to handle auth URL requests from JavaScript
+        function handleAuthUrlRequest(authUrl) {
+            console.log("Handling auth URL request:", authUrl);
+            // This function will be called when the JavaScript requests an auth URL
+            // to be handled by Android Custom Tabs
+            if (window.AndroidInterface) {
+                window.AndroidInterface.onAuthUrlRequested(authUrl);
             }
         }
 
