@@ -72,10 +72,7 @@ class PuterManager private constructor(private val context: Context) {
         val future = CompletableFuture<Boolean>()  
       
         if (isBound && puterService != null) {  
-            puterService?.evaluateJavascript(  
-                "puter.auth.signIn()",  
-                null  
-            )  
+            puterService?.evaluateJavascript("puter.auth.signIn()", null)  
             future.complete(true)  
         } else {  
             Log.e(TAG, "PuterService not bound")  

@@ -715,6 +715,12 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
+    // Method to evaluate arbitrary JavaScript in the WebView
+    fun evaluateJavascript(jsCode: String, resultCallback: ValueCallback&lt;String&gt;?) {
+        webView?.post {
+            webView?.evaluateJavascript(jsCode, resultCallback)
+        }
+    }
     
     // Helper method to find a callback ID by its type/prefix
     private fun findCallbackIdByType(type: String): String? {
