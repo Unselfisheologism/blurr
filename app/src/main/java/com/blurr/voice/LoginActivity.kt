@@ -68,34 +68,20 @@ class LoginActivity : AppCompatActivity() {
         loadingText.visibility = View.VISIBLE
         puterSignInButton.isEnabled = false
     
-        // CORRECT: First initialize WebView if needed
-        val webView = findViewById<WebView>(R.id.webView)
-        if (webView == null) {
-            Log.e("LoginActivity", "WebView is null - layout not properly inflated")
+        // CORRECT: Use PuterManager's signIn method properly
+        val signInFuture = PuterManager.getInstance(this).signIn()
+
+        signInFuture.whenComplete { success, error -> 
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 loadingText.visibility = View.GONE
-                puterSignInButton.isEnabled = true
-                Toast.makeText(this, "WebView initialization failed. Please restart the app.", Toast.LENGTH_LONG).show()
-            }
-            return
-        }
-    
-        // Initialize WebView if not already done
-        PuterManager.getInstance(this).setupWebView(webView)
-    
-        // Start authentication through PuterManager
-        PuterManager.getInstance(this).signIn { success ->
-            runOnUiThread {
-                progressBar.visibility = View.GONE
-                loadingText.visibility = View.GONE
-                if (success) {
+                if(success == true) {
                     Toast.makeText(this, "Authentication successful!", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this, MainActivity::class.java))
-                    finish()
+                    startActivtiy(Intent(this, MainActivity::class.java))
+                    finish()    
                 } else {
-                    puterSignInButton.isEnabled = true
-                    Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show()
+                    puterSignInButton-isEnabled = trueToast.makeText (this, "Authentication failed", Toast.LENGTH_SHORT).show()
+                    Log.e("LoginActivity", "Sign in failed", error) 
                 }
             }
         }
@@ -112,7 +98,7 @@ class LoginActivity : AppCompatActivity() {
         Log.d("LoginActivity", "Received intent: $data")
         // CRITICAL: Check if this is our authentication callback (must match puter_webview.html)
         if (data != null && data.toString().startsWith("blurr://auth")) {
-            Log.d("LoginActivity", "Detected authentication callback with data: $data")
+            Log.d("LoginActivity", "Detected authentication callback with $data")
     
            // Extract token directly from query parameters (Puter.js uses query params, not fragment)
            val token = data.getQueryParameter("token")
