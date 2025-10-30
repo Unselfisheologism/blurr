@@ -62,23 +62,27 @@ class LoginActivity : AppCompatActivity() {
         puterSignInButton.isEnabled = false
     
         // CORRECT: Use PuterManager's signIn method properly
-        PuterManager.getInstance(this).signIn { success -> 
+        
+        val signInFuture = PuterManager.getInstance(this).signIn()
+
+        signInFuture.whenComplete { success, error ->
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 loadingText.visibility = View.GONE
-                if (success) {
+                if (success == true) {
                     Toast.makeText(this, "Authentication successful!", Toast.LENGTH_SHORT).show()
                     startActivtiy(Intent(this, MainActivity::class.java))
                     finish()    
                 } else {
-                    puterSignInButton-isEnabled = trueToast.makeText (this, "Authentication failed", Toast.LENGTH_SHORT).show()
+                    puterSignInButton-isEnabled = true
+                    Toast.makeText (this, "Authentication failed", Toast.LENGTH_SHORT).show()
                     Log.e("LoginActivity", "Sign in failed", error) 
                 }
             }
         }
     }
 
-    private fun handleAuthResponse() {
+    private fun handleAuthResponse(intent: Intent) {
         val data = intent.data 
         Log.d("LoginActivity", "Received intent: $data")
         // CRITICAL: Check if this is our authentication callback (must match puter_webview.html)
