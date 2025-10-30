@@ -31,6 +31,13 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_onboarding)
 
+        var webview = findViewById<WebView>(R.id.webView)
+        if (webView != null) {
+            PuterManager.getInstance(this).setupWebView(webView)
+        } else {
+            Log.e(TAG, "WebView not found in layout")
+        }
+
         // Find the new Puter sign-in button
         puterSignInButton = findViewById(R.id.puterSignInButton)
         progressBar = findViewById(R.id.progressBar)
@@ -55,92 +62,92 @@ class LoginActivity : AppCompatActivity() {
         handleAuthResponse(intent)
     }
 
-    private fun signInWithPuter() {  
-        progressBar.visibility = View.VISIBLE  
-        loadingText.visibility = View.VISIBLE  
-        puterSignInButton.isEnabled = false  
-      
-        // Set up callback to intercept auth URL from WebView  
-        puterManager.getPuterService()?.setAuthUrlCallback { url ->  
-            Log.d(TAG, "Auth URL intercepted from WebView: $url")  
-            runOnUiThread {  
-                try {  
-                    val customTabsIntent = CustomTabsIntent.Builder()  
-                        .setToolbarColor(ContextCompat.getColor(this, R.color.primary))  
-                        .build()  
-                    customTabsIntent.launchUrl(this, Uri.parse(url))  
-                } catch (e: Exception) {  
-                    Log.e(TAG, "Failed to launch Custom Tabs", e)  
-                    Toast.makeText(this, "Browser not available", Toast.LENGTH_LONG).show()  
-                }  
-            }  
-        }  
-      
-        // Trigger puter.auth.signIn() in the WebView  
-        puterManager.signIn()  
+    private fun signInWithPuter() {
+        progressBar.visibility = View.VISIBLE
+        loadingText.visibility = View.VISIBLE
+        puterSignInButton.isEnabled = false
+    
+        // CORRECT: First initialize WebView if needed
+        val webView = findViewById<WebView>(R.id.webView)
+        if (webView == null) {
+            Log.e("LoginActivity", "WebView is null - layout not properly inflated")
+            runOnUiThread {
+                progressBar.visibility = View.GONE
+                loadingText.visibility = View.GONE
+                puterSignInButton.isEnabled = true
+                Toast.makeText(this, "WebView initialization failed. Please restart the app.", Toast.LENGTH_LONG).show()
+            }
+            return
+        }
+    
+        // Initialize WebView if not already done
+        PuterManager.getInstance(this).setupWebView(webView)
+    
+        // Start authentication through PuterManager
+        PuterManager.getInstance(this).signIn { success ->
+            runOnUiThread {
+                progressBar.visibility = View.GONE
+                loadingText.visibility = View.GONE
+                if (success) {
+                    Toast.makeText(this, "Authentication successful!", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this, MainActivity::class.java))
+                    finish()
+                } else {
+                    puterSignInButton.isEnabled = true
+                    Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
     
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAuthResponse()
+    }
+
     private fun handleAuthResponse(intent: Intent? = null) {
         val data = intent?.data ?: this.intent.data
         Log.d("LoginActivity", "Received intent: $data")
+        // CRITICAL: Check if this is our authentication callback (must match puter_webview.html)
+        if (data != null && data.toString().startsWith("blurr://auth")) {
+            Log.d("LoginActivity", "Detected authentication callback with data: $data")
+    
+           // Extract token directly from query parameters (Puter.js uses query params, not fragment)
+           val token = data.getQueryParameter("token")
+           val error = data.getQueryParameter("error")
+    
+          if (!token.isNullOrEmpty()) {
+              Log.d("LoginActivity", "Authentication successful, token received: ${token.take(5)}...")
+              // Save token securely
+              val editor = getSharedPreferences("auth", MODE_PRIVATE).edit()
+              editor.putString("puter_token", token)
+              editor.putBoolean("is_authenticated", true)
+              editor.apply()
         
-        // Check if this is our authentication callback
-        if (data != null && data.toString().startsWith("myblurr://auth")) {
-            // Extract the token from the fragment (for implicit flow) or query parameters
-            val fragment = data.fragment
-            var token: String? = null
-            
-            // For implicit flow, the token is in the fragment
-            if (!fragment.isNullOrEmpty()) {
-                val params = fragment.split("&")
-                for (param in params) {
-                    if (param.startsWith("access_token=")) {
-                        token = param.substring("access_token=".length)
-                        break
-                    }
-                }
-            }
-            
-            // If not in fragment, check query parameters (for authorization code flow)
-            if (token == null) {
-                token = data.getQueryParameter("access_token")
-            }
-            
-            val error = data.getQueryParameter("error")
-            val errorDescription = data.getQueryParameter("error_description")
-            
-            if (!token.isNullOrEmpty()) {
-                Log.d("LoginActivity", "Authentication successful, token received")
-                // Save token securely
-                val editor = getSharedPreferences("auth", MODE_PRIVATE).edit()
-                editor.putString("puter_token", token)
-                editor.apply()
-                
-                // Initialize Puter with the token
-                puterManager.initializeWithToken(token)
-                
-                // Proceed to main activity
-                runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    loadingText.visibility = View.GONE
-                    Toast.makeText(this, "Successfully authenticated!", Toast.LENGTH_SHORT).show()
-                    startPostAuthFlow()
+              // Proceed to main activity
+              runOnUiThread {
+                  progressBar.visibility = View.GONE
+                  loadingText.visibility = View.GONE
+                  Toast.makeText(this, "Successfully authenticated!", Toast.LENGTH_SHORT).show()
+                  startActivity(Intent(this, MainActivity::class.java))
+                  finish()
                 }
             } else if (!error.isNullOrEmpty()) {
-                Log.e("LoginActivity", "Authentication error: $error - $errorDescription")
+                Log.e("LoginActivity", "Authentication error: $error")
                 runOnUiThread {
                     progressBar.visibility = View.GONE
                     loadingText.visibility = View.GONE
                     puterSignInButton.isEnabled = true
-                    Toast.makeText(this, "Authentication failed: $error - $errorDescription", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Authentication failed: $error", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                // No token and no error - might be a cancelled auth
-                Log.d("LoginActivity", "No token received, authentication may have been cancelled")
+                Log.e("LoginActivity", "Unknown authentication failure")
                 runOnUiThread {
                     progressBar.visibility = View.GONE
                     loadingText.visibility = View.GONE
                     puterSignInButton.isEnabled = true
+                    Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show()
                 }
             }
         }
