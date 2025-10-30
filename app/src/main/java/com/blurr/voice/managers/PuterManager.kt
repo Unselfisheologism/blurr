@@ -16,7 +16,7 @@ class PuterManager private constructor(private val context: Context) {
     private val callbacks = mutableMapOf<String, (String?) -> Unit>()
     private var callbackCounter = 0
     private val TAG = "PuterManager"
-    private var authCallback: ((Booloean) -> Unit)? = null
+    private var authCallback: ((Boolean) -> Unit)? = null
 
     companion object {
         @Volatile
@@ -44,10 +44,10 @@ class PuterManager private constructor(private val context: Context) {
         }
     }
 
-    private fun setupWebView(webView: WebView) {
-        this.webView = webView
+    private fun setupWebView(WebView: WebView) {
+        this.WebView = WebView
     
-        webView.webViewClient = object : WebViewClient() {
+        WebView.WebViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url.toString()
                 Log.d(TAG, "WebView URL request: $url")
@@ -79,14 +79,14 @@ class PuterManager private constructor(private val context: Context) {
                     if (!token.isNullOrEmpty()) {
                         Log.d(TAG, "Token extracted from callback URL")
                     
-                        webView.post {
+                        WebView.post {
                             val jsCode = """
                                 if (typeof window.__puterAuthResolver === 'function') {
                                     window.__puterAuthResolver({token: '$token'});
                                     window.__puterAuthResolver = null;
                                 }
                             """.trimIndent()
-                            webView.evaluateJavascript(jsCode, null)
+                            WebView.evaluateJavascript(jsCode, null)
                         }
                     }
                     return true
@@ -123,7 +123,7 @@ class PuterManager private constructor(private val context: Context) {
             }
         }
     
-        webView.addJavascriptInterface(object : Any() {
+        WebView.addJavascriptInterface(object : Any() {
             @JavascriptInterface
             fun onAuthSuccess(userJson: String) {
                 Log.d(TAG, "JS reports auth success: $userJson")
@@ -139,7 +139,7 @@ class PuterManager private constructor(private val context: Context) {
             }
         }, "AndroidInterface")
     
-        webView.loadUrl("file:///android_asset/puter_webview.html")
+        WebView.loadUrl("file:///android_asset/puter_WebView.html")
     }
 
     fun initialize() {
@@ -175,7 +175,7 @@ class PuterManager private constructor(private val context: Context) {
             authCallback = null
         }
     
-        webView?.post {
+        WebView?.post {
             val jsCode = """
                 try {
                     console.log("Attempting to sign in with Puter.js");
@@ -197,7 +197,7 @@ class PuterManager private constructor(private val context: Context) {
                     }
                 }
             """.trimIndent()
-            webView?.evaluateJavascript(jsCode, null)
+            WebView?.evaluateJavascript(jsCode, null)
         }
         return future
     }

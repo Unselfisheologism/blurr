@@ -50,7 +50,7 @@ This document describes the implementation of the puter.kv store functionality i
 - `PuterBridge.kt`: Handles JavaScript-to-Android communication bridge
 
 ### WebView Layer
-- `puter_webview.html`: Contains the JavaScript bridge functions that interface with Puter.js
+- `puter_WebView.html`: Contains the JavaScript bridge functions that interface with Puter.js
 - Uses the official Puter.js SDK (`https://js.puter.com/v2/`)
 
 ### Communication Flow

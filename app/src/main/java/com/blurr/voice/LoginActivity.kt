@@ -85,7 +85,7 @@ class LoginActivity : AppCompatActivity() {
     private fun handleAuthResponse(intent: Intent) {
         val data = intent.data 
         Log.d("LoginActivity", "Received intent: $data")
-        // CRITICAL: Check if this is our authentication callback (must match puter_webview.html)
+        // CRITICAL: Check if this is our authentication callback (must match puter_WebView.html)
         if (data != null && data.toString().startsWith("blurr://auth")) {
             Log.d("LoginActivity", "Detected authentication callback with $data")
             // Extract token directly from query parameters (Puter.js uses query params, not fragment)

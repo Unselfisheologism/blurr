@@ -11,7 +11,7 @@ Progressive Web Apps (PWAs): Puter.js is compatible with PWAs, which are website
 Potential limitations on mobile
 While Puter.js is designed to be mobile-compatible, some issues have been reported, primarily in early versions. A July 2025 GitHub issue reported that a Puter.js text-to-speech (TTS) function worked on desktop but not mobile, getting "stuck in SSO" (Single Sign-On). While these kinds of bugs can be resolved, it is important to test your application thoroughly on mobile to ensure all features work as expected. 
 
-ME: does the whole mobile app have to be in the webview or only the puter.js part?
+ME: does the whole mobile app have to be in the WebView or only the puter.js part?
 
 
 EXPERT: It is not necessary for the entire mobile app to be in a WebView to use Puter.js. Many modern hybrid apps are built with a mix of native code and web views, which is a common and effective approach. This allows developers to use the best technology for each part of the application. 
@@ -45,7 +45,7 @@ Load Puter.js once: In this persistent WebView, load a local HTML file that incl
 Set up the JavaScript bridge: Use addJavascriptInterface() to create a bridge that allows your native Kotlin or Java code to call JavaScript functions inside the WebView, and vice versa. 
 2. Implement a robust communication bridge
 This is the most critical part for a system-wide AI assistant. The bridge allows your native code to send requests to the Puter.js environment and receive AI-generated responses.
-Native-to-JavaScript communication: Your native Android service can execute JavaScript functions within the persistent WebView. For example, to ask a question, your native code could call webView.evaluateJavascript("puter.ai.chat('What is the weather?');", null);.
+Native-to-JavaScript communication: Your native Android service can execute JavaScript functions within the persistent WebView. For example, to ask a question, your native code could call WebView.evaluateJavascript("puter.ai.chat('What is the weather?');", null);.
 JavaScript-to-Native communication: For the JavaScript environment to communicate back to the native app, you need to expose a native class to JavaScript using addJavascriptInterface(). This allows Puter.js to trigger native Android actions. For example, a JavaScript function could trigger a native call to show an overlay, perform a UI automation task, or display a pop-up.
 Centralize the state: Since Puter.js is now in a central service, its state (like authentication status or AI conversation history) is naturally synchronized. Any part of your native app that needs to interact with Puter.js will do so by communicating with this single, centralized service. 
 3. Manage UI automation and interactions
@@ -78,7 +78,7 @@ How it works in detail:
 Service hosts the environment: You create an Android Service (or ForegroundService if it needs to run continuously) that creates and maintains a single WebView instance in the background.
 HTML and script tag: This WebView loads a local assets/ HTML file that contains nothing but the Puter.js script tag <script src="https://js.puter.com/v2/"></script> and your own JavaScript bridge code.
 The bridge connects layers: You use the native addJavascriptInterface() method to create a communication bridge.
-Native calls JavaScript: Your Android service can use webView.evaluateJavascript() to execute Puter.js functions. For example, when the user triggers the AI, the native code sends a query to the WebView.
+Native calls JavaScript: Your Android service can use WebView.evaluateJavascript() to execute Puter.js functions. For example, when the user triggers the AI, the native code sends a query to the WebView.
 JavaScript calls Native: The JavaScript in the WebView can call back into your native Android code, allowing the AI's response to trigger UI automation or native components in your blurr fork. 
 This design gives you the best of both worlds: you get the convenience of Puter.js's browser-based SDK and the power of native Android UI automation for a cohesive, system-wide experience. 
 
@@ -107,7 +107,7 @@ Native execution of AI commands: When your native app receives the response from
 
 =================(THIS IS WHAT ACTUALLY HAS TO BE IMPLEMENED)========================================
 
-ME: but I can't use the webview approach because when I tried implementing puter.js auth through webviews, it got stuck because in a normal mobile browser the puter.js popup would just open as a new tab, wait for the user to complete the authentication and redirect him to the original tab where the web app was. in the mobile app webview approach, it just gets tuck and persistently shows 'signing in...' when i complete the authentication
+ME: but I can't use the WebView approach because when I tried implementing puter.js auth through WebViews, it got stuck because in a normal mobile browser the puter.js popup would just open as a new tab, wait for the user to complete the authentication and redirect him to the original tab where the web app was. in the mobile app WebView approach, it just gets tuck and persistently shows 'signing in...' when i complete the authentication
 
 
 EXPERT: That's a very important and insightful point. You've hit on a known, thorny issue with Single Sign-On (SSO) systems that rely on pop-up windows when implemented inside a standard Android WebView. The typical browser multi-tab flow doesn't work correctly in a single WebView environment, causing the exact "stuck" behavior you described. 
@@ -138,10 +138,10 @@ This hybrid approach solves the problem at its root:
 Authenticates correctly: By using a Custom Tab, you leverage the full power of a secure browser environment for the one part of the flow that needs it, avoiding the "stuck" issue.
 Maintains native app control: Your native app is in full control of launching and handling the results of the authentication flow.
 Keeps the persistent state: Your background WebView remains intact and continuously running, preserving the state of Puter.js for a system-wide experience.
-Best of both worlds: It allows you to use Puter.js's powerful web-based APIs while using native Android features (like deep links and Custom Tabs) for critical interactions like authentication, which webviews are not well-suited for. 
+Best of both worlds: It allows you to use Puter.js's powerful web-based APIs while using native Android features (like deep links and Custom Tabs) for critical interactions like authentication, which WebViews are not well-suited for. 
 
 
-ME: so the index.html page that is loaded in the webview has to have all the puter.js functions like puter.ai.chat() , txt2img, img2txt, txt2speech, and the puter.js kv store functions? is this true?
+ME: so the index.html page that is loaded in the WebView has to have all the puter.js functions like puter.ai.chat() , txt2img, img2txt, txt2speech, and the puter.js kv store functions? is this true?
 17 minutes ago
 
 EXPERT: No, the index.html page does not need to have all the Puter.js functions defined within it. The core principle is that the index.html file simply loads the Puter.js library, which in turn makes all of its functions (like puter.ai.chat(), puter.fs.kv.get(), etc.) available to the JavaScript environment. Your native Android code, via the JavaScript bridge, can then call these functions as needed. 
@@ -172,7 +172,7 @@ Use code with caution.
 Use evaluateJavascript to call the bridge: Your native Android code in the background Service will then use evaluateJavascript() to call these wrapper functions, passing in the necessary arguments.
 From native to JavaScript:
 java
-webView.evaluateJavascript("puterChat('Your AI query goes here.');", new ValueCallback<String>() {
+WebView.evaluateJavascript("puterChat('Your AI query goes here.');", new ValueCallback<String>() {
     @Override
     public void onReceiveValue(String result) {
         // Handle the AI's response here
@@ -184,7 +184,7 @@ For functions with no return value, like puter.ai.chat() which returns a Promise
 How the communication flows
 The process for a command like puter.ai.chat() would look like this:
 Native Trigger: An event in your blurr fork (e.g., user speech input) triggers your Android Service.
-Send Command: Your Service calls webView.evaluateJavascript("puterChat('user query');").
+Send Command: Your Service calls WebView.evaluateJavascript("puterChat('user query');").
 JavaScript Execution: The background WebView executes the puterChat() function, which in turn calls puter.ai.chat().
 Async Response: When the Puter.js AI returns a result, the JavaScript code in your bridge.js handles the promise resolution.
 Send to Native: The JavaScript function then calls back to a native method using the addJavascriptInterface bridge. For example, window.Android.onAIResponse(result).
@@ -276,7 +276,7 @@ Wiki pages you might want to explore:
 
     return result.fold(
       (data) async {
-        // Open the webview with oauth url
+        // Open the WebView with oauth url
         final uri = Uri.parse(data.oauthUrl);
         final isSuccess = await afLaunchUri(
           uri,
