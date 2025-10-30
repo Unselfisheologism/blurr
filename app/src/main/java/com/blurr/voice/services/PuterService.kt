@@ -716,7 +716,7 @@ class PuterService : Service() {
         }
     }
     // Method to evaluate arbitrary JavaScript in the WebView
-    fun evaluateJavascript(jsCode: String, resultCallback: ValueCallback&lt;String&gt;?) {
+    fun evaluateJavascript(jsCode: String, resultCallback: ValueCallback<String>?) {
         webView?.post {
             webView?.evaluateJavascript(jsCode, resultCallback)
         }
