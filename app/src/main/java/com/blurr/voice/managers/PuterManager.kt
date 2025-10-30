@@ -90,18 +90,19 @@ class PuterManager private constructor(private val context: Context) {
     }
     
     // Initialize Puter with an authentication token
-    fun initializeWithToken(token: String) {
-        // Store the token for future use
-        val editor = context.getSharedPreferences("auth", Context.MODE_PRIVATE).edit()
-        editor.putString("puter_token", token)
-        editor.apply()
-        
-        // If service is bound, we might need to pass the token to it
-        // This would depend on how the PuterService handles authenticated sessions
-        if (isBound) {
-            // We could potentially send the token to the service
-            // puterService?.setAuthToken(token)
-        }
+    fun initializeWithToken(token: String) {  
+        // Store the token for future use  
+        val editor = context.getSharedPreferences("auth", Context.MODE_PRIVATE).edit()  
+        editor.putString("puter_token", token)  
+        editor.apply()  
+      
+        // Inject token into the WebView's JavaScript context  
+        if (isBound && puterService != null) {  
+            puterService?.injectAuthToken(token)  
+            Log.d(TAG, "Token injected into PuterService WebView")  
+        } else {  
+            Log.w(TAG, "PuterService not bound, token stored but not injected")  
+        }  
     }
     
     // Get the stored authentication token

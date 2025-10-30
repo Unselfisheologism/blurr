@@ -54,6 +54,26 @@ class PuterService : Service() {
                 }
 
                 webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {  
+                        val url = request?.url?.toString() ?: return false  
+          
+                        // Intercept Puter.js authentication URLs  
+                        if (url.contains("puter.com/action/sign-in") ||   
+                            url.contains("puter.com/?embedded_in_popup=true") ||  
+                            url.contains("request_auth=true")) {  
+              
+                            Log.d(TAG, "Intercepting auth URL: $url")  
+              
+                            // Launch Chrome Custom Tabs instead of loading in WebView  
+                            authUrlCallback?.invoke(url)  
+              
+                           // Prevent WebView from loading this URL  
+                           return true  
+                        }  
+          
+                        return false  
+                    }
+
                     override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
                         Log.d(TAG, "Page finished loading: $url")
@@ -113,6 +133,31 @@ class PuterService : Service() {
             
             webView?.evaluateJavascript(jsCode, null)
         }
+    }
+
+    fun injectAuthToken(token: String) {  
+        webView?.post {  
+            val jsCode = """  
+                (function() {  
+                    // Store token in localStorage for Puter.js to use  
+                    localStorage.setItem('puter_auth_token', '$token');  
+                  
+                    // If Puter.js has a method to set auth token, call it  
+                    if (typeof puter !== 'undefined' && puter.auth && puter.auth.setToken) {  
+                        puter.auth.setToken('$token');  
+                    }  
+                  
+                    // Notify that authentication is complete  
+                    if (window.AndroidInterface) {  
+                        window.AndroidInterface.onAuthSuccess('{"success": true}');  
+                    }  
+                })();  
+            """.trimIndent()  
+          
+            webView?.evaluateJavascript(jsCode) { result ->  
+                Log.d(TAG, "Token injection result: $result")  
+            }  
+        }  
     }
 
     // Chat functionality
