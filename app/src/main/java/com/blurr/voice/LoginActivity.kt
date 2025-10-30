@@ -71,10 +71,10 @@ class LoginActivity : AppCompatActivity() {
                 loadingText.visibility = View.GONE
                 if (success == true) {
                     Toast.makeText(this, "Authentication successful!", Toast.LENGTH_SHORT).show()
-                    startActivtiy(Intent(this, MainActivity::class.java))
+                    startActivity(Intent(this, MainActivity::class.java))
                     finish()    
                 } else {
-                    puterSignInButton-isEnabled = true
+                    puterSignInButton.isEnabled = true
                     Toast.makeText (this, "Authentication failed", Toast.LENGTH_SHORT).show()
                     Log.e("LoginActivity", "Sign in failed", error) 
                 }
