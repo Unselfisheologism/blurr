@@ -32,13 +32,6 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_onboarding)
 
-        var webview = findViewById<WebView>(R.id.webView)
-        if (webView != null) {
-            PuterManager.getInstance(this).setupWebView(webView)
-        } else {
-            Log.e(TAG, "WebView not found in layout")
-        }
-
         // Find the new Puter sign-in button
         puterSignInButton = findViewById(R.id.puterSignInButton)
         progressBar = findViewById(R.id.progressBar)
@@ -69,13 +62,11 @@ class LoginActivity : AppCompatActivity() {
         puterSignInButton.isEnabled = false
     
         // CORRECT: Use PuterManager's signIn method properly
-        val signInFuture = PuterManager.getInstance(this).signIn()
-
-        signInFuture.whenComplete { success, error -> 
+        PuterManager.getInstance(this).signIn { success -> 
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 loadingText.visibility = View.GONE
-                if(success == true) {
+                if (success) {
                     Toast.makeText(this, "Authentication successful!", Toast.LENGTH_SHORT).show()
                     startActivtiy(Intent(this, MainActivity::class.java))
                     finish()    
@@ -86,23 +77,16 @@ class LoginActivity : AppCompatActivity() {
             }
         }
     }
-    
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleAuthResponse()
-    }
 
-    private fun handleAuthResponse(intent: Intent? = null) {
-        val data = intent?.data ?: this.intent.data
+    private fun handleAuthResponse() {
+        val data = intent.data 
         Log.d("LoginActivity", "Received intent: $data")
         // CRITICAL: Check if this is our authentication callback (must match puter_webview.html)
         if (data != null && data.toString().startsWith("blurr://auth")) {
             Log.d("LoginActivity", "Detected authentication callback with $data")
-    
-           // Extract token directly from query parameters (Puter.js uses query params, not fragment)
-           val token = data.getQueryParameter("token")
-           val error = data.getQueryParameter("error")
+            // Extract token directly from query parameters (Puter.js uses query params, not fragment)
+            val token = data.getQueryParameter("token")
+            val error = data.getQueryParameter("error")
     
           if (!token.isNullOrEmpty()) {
               Log.d("LoginActivity", "Authentication successful, token received: ${token.take(5)}...")
