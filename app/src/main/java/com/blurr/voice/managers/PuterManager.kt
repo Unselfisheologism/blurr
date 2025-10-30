@@ -68,25 +68,21 @@ class PuterManager private constructor(private val context: Context) {
     }
 
     // Authentication sign in functionality - now handles Custom Tabs setup
-    fun signIn(): CompletableFuture<Boolean> {
-        val future = CompletableFuture<Boolean>()
-        
-        // Launch the authentication URL in Custom Tabs
-        // This is now handled in LoginActivity with the correct URL
-        // The correct URL format for Puter authentication would be:
-        // https://puter.com/api/auth/oauth/authorize?client_id=CLIENT_ID&redirect_uri=REDIRECT_URI&response_type=token&scope=full
-        
-        // If service is bound, notify the service to handle the URL
-        if (isBound) {
-            puterService?.setAuthUrlCallback { url ->
-                // This would handle the auth URL if needed
-            }
-        }
-        
-        // Return success since authentication is handled by Custom Tabs
-        future.complete(true)
-        
-        return future
+    fun signIn(): CompletableFuture<Boolean> {  
+        val future = CompletableFuture<Boolean>()  
+      
+        if (isBound && puterService != null) {  
+            puterService?.evaluateJavascript(  
+                "puter.auth.signIn()",  
+                null  
+            )  
+            future.complete(true)  
+        } else {  
+            Log.e(TAG, "PuterService not bound")  
+            future.complete(false)  
+        }  
+      
+        return future  
     }
     
     // Initialize Puter with an authentication token

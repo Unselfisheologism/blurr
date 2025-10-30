@@ -56,21 +56,21 @@ class PuterService : Service() {
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {  
                         val url = request?.url?.toString() ?: return false  
-          
+      
                         // Intercept Puter.js authentication URLs  
                         if (url.contains("puter.com/action/sign-in") ||   
                             url.contains("puter.com/?embedded_in_popup=true") ||  
                             url.contains("request_auth=true")) {  
-              
-                            Log.d(TAG, "Intercepting auth URL: $url")  
-              
-                            // Launch Chrome Custom Tabs instead of loading in WebView  
-                            authUrlCallback?.invoke(url)  
-              
+          
+                           Log.d(TAG, "Intercepting auth URL from puter.auth.signIn(): $url")  
+          
+                           // Launch Chrome Custom Tabs instead  
+                           authUrlCallback?.invoke(url)  
+          
                            // Prevent WebView from loading this URL  
                            return true  
                         }  
-          
+      
                         return false  
                     }
 

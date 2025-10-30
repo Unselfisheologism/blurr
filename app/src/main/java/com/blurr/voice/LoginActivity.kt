@@ -25,9 +25,6 @@ class LoginActivity : AppCompatActivity() {
     
     companion object {
         const val TAG = "LoginActivity"
-        // NOTE: This client ID needs to be configured with your actual Puter application
-        // You need to register your app with Puter to get a real client ID
-        private const val PUTER_CLIENT_ID = "YOUR_ACTUAL_PUTER_CLIENT_ID"  // Replace with your actual client ID
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,7 +60,7 @@ class LoginActivity : AppCompatActivity() {
         loadingText.visibility = View.VISIBLE  
         puterSignInButton.isEnabled = false  
       
-        // Set up callback to handle auth URLs from WebView  
+        // Set up callback to intercept auth URL from WebView  
         puterManager.getPuterService()?.setAuthUrlCallback { url ->  
             Log.d(TAG, "Auth URL intercepted from WebView: $url")  
             runOnUiThread {  
@@ -73,35 +70,14 @@ class LoginActivity : AppCompatActivity() {
                         .build()  
                     customTabsIntent.launchUrl(this, Uri.parse(url))  
                 } catch (e: Exception) {  
-                    Log.e(TAG, "Failed to launch Custom Tabs for intercepted URL", e)  
+                    Log.e(TAG, "Failed to launch Custom Tabs", e)  
                     Toast.makeText(this, "Browser not available", Toast.LENGTH_LONG).show()  
                 }  
             }  
         }  
       
-        // Use the correct Puter authentication URL  
-        val authUrl = "https://puter.com/action/sign-in?" +  
-                "client_id=$PUTER_CLIENT_ID&" +  
-                "redirect_uri=myblurr://auth&" +  
-                "response_type=token&" +  
-                "scope=full"  
-  
-        try {  
-            val customTabsIntent = CustomTabsIntent.Builder()  
-                .setToolbarColor(ContextCompat.getColor(this, R.color.primary))  
-                .build()  
-          
-            Log.d(TAG, "Launching Custom Tabs for authentication: $authUrl")  
-            customTabsIntent.launchUrl(this, Uri.parse(authUrl))  
-        } catch (e: Exception) {  
-            Log.e(TAG, "Failed to launch Custom Tabs", e)  
-            runOnUiThread {  
-                progressBar.visibility = View.GONE  
-                loadingText.visibility = View.GONE  
-                puterSignInButton.isEnabled = true  
-                Toast.makeText(this, "Browser not available. Please install Chrome.", Toast.LENGTH_LONG).show()  
-            }  
-        }  
+        // Trigger puter.auth.signIn() in the WebView  
+        puterManager.signIn()  
     }
     
     private fun handleAuthResponse(intent: Intent? = null) {
