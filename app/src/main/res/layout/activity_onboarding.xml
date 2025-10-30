@@ -29,6 +29,14 @@
         android:textColor="#FFBD86"
         android:textSize="20sp" />
 
+    <WebView 
+        android:id="@+id/webivew"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        tools:layout_editor_absoluteX="0dp"
+        tools:absolute_editor_absoluteY="0dp" />
+
     <!-- Puter Sign In Button -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/puterSignInButton"
