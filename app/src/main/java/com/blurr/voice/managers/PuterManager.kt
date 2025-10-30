@@ -16,6 +16,7 @@ class PuterManager private constructor(private val context: Context) {
     private val callbacks = mutableMapOf<String, (String?) -> Unit>()
     private var callbackCounter = 0
     private val TAG = "PuterManager"
+    private var authCallback: ((Booloean) -> Unit)? = null
 
     companion object {
         @Volatile
@@ -43,6 +44,104 @@ class PuterManager private constructor(private val context: Context) {
         }
     }
 
+    private fun setupWebView(webView: WebView) {
+        this.webView = webView
+    
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val url = request.url.toString()
+                Log.d(TAG, "WebView URL request: $url")
+            
+                if (url.contains("puter.com") && 
+                    (url.contains("/auth") || 
+                     url.contains("/login") || 
+                     url.contains("action=sign-in") ||
+                     url.contains("embedded_in_popup=true"))) {
+                
+                    Log.d(TAG, "INTERCEPTED AUTH URL: $url")
+                
+                    try {
+                        val customTabsIntent = CustomTabsIntent.Builder()
+                            .setToolbarColor(ContextCompat.getColor(context, R.color.primary))
+                            .build()
+                    
+                        customTabsIntent.launchUrl(context, Uri.parse(url))
+                        return true
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to launch Custom Tabs for auth", e)
+                    }
+                }
+            
+                if (url.startsWith("blurr://auth")) {
+                    Log.d(TAG, "INTERCEPTED AUTH CALLBACK: $url")
+                
+                    val token = Uri.parse(url).getQueryParameter("token")
+                    if (!token.isNullOrEmpty()) {
+                        Log.d(TAG, "Token extracted from callback URL")
+                    
+                        webView.post {
+                            val jsCode = """
+                                if (typeof window.__puterAuthResolver === 'function') {
+                                    window.__puterAuthResolver({token: '$token'});
+                                    window.__puterAuthResolver = null;
+                                }
+                            """.trimIndent()
+                            webView.evaluateJavascript(jsCode, null)
+                        }
+                    }
+                    return true
+                }
+            
+                return false
+            }
+        
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: WebResourceError?
+            ) {
+                super.onReceivedError(view, request, error)
+                Log.e(TAG, "WebView error: ${error?.description}")
+            }
+        
+            override fun onPageFinished(view: WebView?, url: String?) {
+                super.onPageFinished(view, url)
+                Log.d(TAG, "Page finished: $url")
+            
+                view?.evaluateJavascript("""
+                    if (typeof window.AndroidInterface === 'undefined') {
+                        window.AndroidInterface = {
+                            onAuthSuccess: function(userJson) {
+                                AndroidInterface.onAuthSuccess(userJson);
+                            },
+                            onAuthError: function(errorMessage) {
+                                AndroidInterface.onAuthError(errorMessage);
+                            }
+                        };
+                    }
+                """, null)
+            }
+        }
+    
+        webView.addJavascriptInterface(object : Any() {
+            @JavascriptInterface
+            fun onAuthSuccess(userJson: String) {
+                Log.d(TAG, "JS reports auth success: $userJson")
+                authCallback?.invoke(true)
+                authCallback = null
+            }
+        
+            @JavascriptInterface
+            fun onAuthError(errorMessage: String) {
+                Log.e(TAG, "JS reports auth error: $errorMessage")
+                authCallback?.invoke(false)
+                authCallback = null
+            }
+        }, "AndroidInterface")
+    
+        webView.loadUrl("file:///android_asset/puter_webview.html")
+    }
+
     fun initialize() {
         val intent = Intent(context, PuterService::class.java)
         context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
@@ -68,18 +167,39 @@ class PuterManager private constructor(private val context: Context) {
     }
 
     // Authentication sign in functionality - now handles Custom Tabs setup
-    fun signIn(): CompletableFuture<Boolean> {  
-        val future = CompletableFuture<Boolean>()  
-      
-        if (isBound && puterService != null) {  
-            puterService?.evaluateJavascript("puter.auth.signIn()", null)  
-            future.complete(true)  
-        } else {  
-            Log.e(TAG, "PuterService not bound")  
-            future.complete(false)  
-        }  
-      
-        return future  
+    fun signIn(): CompletableFuture<Boolean> {
+        val future = CompletableFuture<Boolean>()
+    
+        authCallback = { success ->
+            future.complete(success)
+            authCallback = null
+        }
+    
+        webView?.post {
+            val jsCode = """
+                try {
+                    console.log("Attempting to sign in with Puter.js");
+                    puter.auth.signIn().then(user => {
+                        console.log("Authentication successful", user);
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAuthSuccess(JSON.stringify(user));
+                        }
+                    }).catch(error => {
+                        console.error("Authentication error", error);
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAuthError(error.message);
+                        }
+                    });
+                } catch (e) {
+                    console.error("Error calling signIn", e);
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAuthError("Failed to initialize sign-in: " + e.message);
+                    }
+                }
+            """.trimIndent()
+            webView?.evaluateJavascript(jsCode, null)
+        }
+        return future
     }
     
     // Initialize Puter with an authentication token
