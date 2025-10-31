@@ -120,13 +120,135 @@ class PuterService : Service() {
                     ): Boolean {  
                         val url = request?.url?.toString() ?: return false
                         Log.d(TAG, "Popup WebView loading: $url")  
-                        return false // Let WebView handle all URLs  
+                        
+                        // Check if this is an authentication completion URL that should close the popup
+                        if (url.contains("puter.com/auth-complete") || 
+                            url.contains("puter.com/action/sign-in") || 
+                            url.contains("embedded_in_popup=true") || 
+                            url.contains("auth_callback") ||
+                            url.contains("callback")) {
+                            Log.d(TAG, "Detected auth completion URL, closing popup")
+                            closePopup()
+                            return true
+                        }
+                        
+                        return false // Let WebView handle all other URLs  
                     }  
+                      
+                    override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                        super.onPageStarted(view, url, favicon)
+                        Log.d(TAG, "Popup WebView page started: $url")
+                        
+                        // Check for authentication completion during page load
+                        if (url?.contains("puter.com/auth-complete") == true || 
+                            url?.contains("puter.com/action/sign-in") == true || 
+                            url?.contains("embedded_in_popup=true") == true) {
+                            Log.d(TAG, "Detected auth completion during page start, closing popup")
+                            closePopup()
+                        }
+                    }
                       
                     override fun onPageFinished(view: WebView?, url: String?) {  
                         super.onPageFinished(view, url)  
                         Log.d(TAG, "Popup WebView finished loading: $url")  
-                    }  
+                        
+                        // Inject JavaScript to detect when authentication completes and close the popup
+                        // This is especially important for the embedded popup scenario
+                        view?.evaluateJavascript(
+                            """
+                            (function() {
+                                console.log('Popup page finished, checking for auth completion');
+                                
+                                // Check for auth completion patterns in the current URL
+                                if (window.location.href.includes('auth-complete') || 
+                                    window.location.href.includes('callback') ||
+                                    window.location.href.includes('token') ||
+                                    window.location.href.includes('embedded_in_popup=true')) {
+                                    
+                                    console.log('Auth completion detected in URL, attempting to close popup');
+                                    
+                                    // Try multiple methods to close the popup
+                                    if (window.close) {
+                                        window.close();
+                                    }
+                                    
+                                    // If window.close doesn't work, try sending a message to parent
+                                    if (window.opener && window.opener.AndroidInterface) {
+                                        window.opener.AndroidInterface.onAuthSuccess('{"completed": true}');
+                                    }
+                                }
+                                
+                                // Also set up a periodic check for auth completion
+                                setInterval(function() {
+                                    if (window.location.href.includes('auth-complete') || 
+                                        window.location.href.includes('callback') ||
+                                        window.location.href.includes('token')) {
+                                        
+                                        console.log('Periodic check found auth completion');
+                                        
+                                        if (window.close) {
+                                            window.close();
+                                        }
+                                        
+                                        if (window.opener && window.opener.AndroidInterface) {
+                                            window.opener.AndroidInterface.onAuthSuccess(JSON.stringify({completed: true}));
+                                        }
+                                    }
+                                }, 1000);
+                                
+                                // Listen for postMessage from puter.com
+                                window.addEventListener('message', function(event) {
+                                    console.log('Received message in popup:', event.data);
+                                    
+                                    if (event.data && (event.data.type === 'auth-callback' || 
+                                                      event.data.type === 'puter-auth-callback' ||
+                                                      event.data.token)) {
+                                        console.log('Auth callback received, closing popup and notifying parent');
+                                        
+                                        if (window.opener && window.opener.AndroidInterface) {
+                                            window.opener.AndroidInterface.onAuthSuccess(JSON.stringify(event.data));
+                                        }
+                                        
+                                        if (window.close) {
+                                            window.close();
+                                        }
+                                    }
+                                });
+                                
+                                // Look for auth completion elements in the DOM
+                                var observer = new MutationObserver(function(mutations) {
+                                    mutations.forEach(function(mutation) {
+                                        if (mutation.type === 'childList') {
+                                            mutation.addedNodes.forEach(function(node) {
+                                                if (node.textContent && (node.textContent.includes('auth-complete') || node.textContent.includes('Authentication successful'))) {
+                                                    console.log('Auth completion detected in DOM changes');
+                                                    
+                                                    if (window.opener && window.opener.AndroidInterface) {
+                                                        window.opener.AndroidInterface.onAuthSuccess(JSON.stringify({completed: true}));
+                                                    }
+                                                    
+                                                    if (window.close) {
+                                                        window.close();
+                                                    }
+                                                }
+                                            });
+                                        }
+                                    });
+                                });
+                                
+                                observer.observe(document.body, { childList: true, subtree: true });
+                            })();
+                            """, 
+                            null
+                        )
+                    }
+                    
+                    private fun closePopup() {
+                        // Close the popup dialog and destroy the WebView
+                        popupDialog?.dismiss()
+                        popupWebView?.destroy()
+                        popupWebView = null
+                    }
                 }  
                   
                 // Set WebChromeClient for the popup  
@@ -148,6 +270,15 @@ class PuterService : Service() {
                     setCancelable(true)  
                     setOnCancelListener {  
                         Log.d(TAG, "Popup dialog cancelled")  
+                        // Notify the main WebView that authentication was cancelled
+                        webView.evaluateJavascript(
+                            """
+                            if (window.opener && window.opener.AndroidInterface) {
+                                window.opener.AndroidInterface.onAuthError('Authentication cancelled by user');
+                            }
+                            """, 
+                            null
+                        )
                         popupWebView?.destroy()  
                         popupWebView = null  
                     }  
@@ -878,6 +1009,14 @@ class PuterService : Service() {
             Log.d(TAG, "Received auth success: $response")
             // This method will be called when authentication is complete
             signInCallback?.invoke(true)
+            signInCallback = null
+        }
+        
+        @JavascriptInterface
+        fun onAuthError(error: String) {
+            Log.e(TAG, "Received auth error: $error")
+            // This method will be called when authentication fails
+            signInCallback?.invoke(false)
             signInCallback = null
         }
         

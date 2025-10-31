@@ -78,11 +78,12 @@ class PuterManager private constructor(private val context: Context) {
             puterService?.signInCallback = null
         }
 
-        // Call the service method to initiate sign in
+        // First check if already signed in
         puterService?.puterAuthIsSignedIn { signedIn: Boolean ->
             if (signedIn) {
                 // Already signed in
                 future.complete(true)
+                puterService?.signInCallback = null
             } else {
                 // Not signed in, initiate sign in process through popup WebView
                 puterService?.evaluateJavascript("""

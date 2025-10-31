@@ -96,6 +96,43 @@
                     }
                 }
             });
+            
+            // Also listen for messages from puter.js for authentication completion
+            // This is important for the popup to communicate back to the parent
+            window.addEventListener("message", function(event) {
+                console.log("Message received from:", event.origin, "data:", event.data);
+                
+                // Look for puter auth completion messages
+                if (event.data && typeof event.data === 'object') {
+                    if (event.data.type === 'puter-auth-callback' || 
+                        event.data.type === 'auth-callback' || 
+                        (event.data.token && event.data.user)) {
+                        console.log("Detected puter auth completion message:", event.data);
+                        
+                        // Store the token in localStorage
+                        if (event.data.token) {
+                            localStorage.setItem('puter_auth_token', event.data.token);
+                        }
+                        
+                        // Notify Android of authentication completion
+                        if (window.AndroidInterface && window.AndroidInterface.onAuthSuccess) {
+                            window.AndroidInterface.onAuthSuccess(JSON.stringify(event.data));
+                        }
+                        
+                        // Also resolve the stored promise if available
+                        if (window.__puterAuthResolver) {
+                            window.__puterAuthResolver(event.data.user || event.data);
+                            window.__puterAuthResolver = null;
+                        }
+                    }
+                }
+            });
+            
+            // Additional check for existing auth token in localStorage
+            const existingToken = localStorage.getItem('puter_auth_token');
+            if (existingToken) {
+                console.log("Found existing auth token in localStorage");
+            }
         });
         
         // Bridge functions to interact with Puter.js from native Android code
@@ -144,10 +181,10 @@
             }
         }
 
-        async function puterImg2Txt(image) {
+        async function puterImg2Txt(imageData) {
             try {
                 // Assuming image is a base64 string or file object
-                const response = await puter.ai.img2txt(image);
+                const response = await puter.ai.img2txt(imageData);
                 return response;
             } catch (error) {
                 console.error('Img2Txt error:', error);
