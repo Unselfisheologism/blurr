@@ -294,7 +294,7 @@ class AgentService : Service() {
      * Tracks the task start in puter.js by saving to the user's key-value store.
      */
     private suspend fun trackTaskInPuter(task: String) {
-        if (!puterManager.isUserSignedIn()) {
+        if (!puterManager.isAuthenticated()) {
             Log.w(TAG, "Cannot track task, user is not logged in.")
             return
         }
@@ -324,7 +324,7 @@ class AgentService : Service() {
      * Updates the task completion status in puter.js.
      */
     private suspend fun trackTaskCompletion(task: String, success: Boolean, errorMessage: String? = null) {
-        if (!puterManager.isUserSignedIn()) {
+        if (!puterManager.isAuthenticated()) {
             Log.w(TAG, "Cannot track task completion, user is not logged in.")
             return
         }
