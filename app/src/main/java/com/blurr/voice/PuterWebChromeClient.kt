@@ -21,13 +21,13 @@ class PuterWebChromeClient : WebChromeClient() {
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
-                setSupportMultipleWindows(true)  // Essential for popup windows
+                setSupportMultipleWindows(true) // Essential for popup windows
                 javaScriptCanOpenWindowsAutomatically = true  // Must be true
                 allowFileAccess = true
                 allowContentAccess = true
                 databaseEnabled = true
                 // Set a proper user agent to ensure mobile-optimized experience
-                userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.0.0 Mobile Safari/537.36 PuterApp"
+                userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.0 Mobile Safari/537.36 PuterApp"
             }
             
             webViewClient = object : WebViewClient() {
@@ -48,9 +48,14 @@ class PuterWebChromeClient : WebChromeClient() {
             }
         }
         
+        // Check if popupWebView is not null before proceeding
+        if (popupWebView == null) {
+            return false
+        }
+        
         // Create dialog to display popup WebView
         popupDialog = Dialog(view.context, android.R.style.Theme_Black_NoTitleBar_Fullscreen).apply {
-            setContentView(popupWebView)
+            setContentView(popupWebView!!) // Safe to use !! since we checked for null above
             setCancelable(true)
             setOnCancelListener {
                 popupWebView?.destroy()
