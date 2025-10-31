@@ -77,7 +77,7 @@ class PuterService : Service() {
                     }
                 }
 
-                webView.webChromeClient = PuterWebChromeClient()
+                webChromeClient = PuterWebChromeClient()
             }
 
             // Load the Puter bridge HTML
@@ -85,6 +85,7 @@ class PuterService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing WebView", e)
         }
+    }
     
     // Chat functionality
     fun executePuterChat(query: String, callback: (String?) -> Unit) {
