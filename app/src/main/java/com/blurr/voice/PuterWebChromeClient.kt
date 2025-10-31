@@ -1,3 +1,5 @@
+package com.blurr.voice
+
 import android.app.Dialog
 import android.content.Context
 import android.os.Message
@@ -38,8 +40,8 @@ class PuterWebChromeClient : WebChromeClient() {
             }
         }
         
-        popupDialog = Dialog(view.context, android.R.style.Theme_Black_NoTitleBar_Fullscreen).apply {
-            setContentView(popupWebView)
+        popupDialog = Dialog(view?.context ?: return false, android.R.style.Theme_Black_NoTitleBar_Fullscreen).apply {
+            popupWebView?.let { setContentView(it) }
             setCancelable(true)
             setOnCancelListener {
                 popupWebView?.destroy()

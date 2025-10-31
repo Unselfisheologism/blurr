@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import android.webkit.*
 import android.os.Message
 import com.blurr.voice.LoginActivity
+import com.blurr.voice.PuterWebChromeClient
 
 class PuterService : Service() {
     private var webView: WebView? = null
@@ -78,7 +79,7 @@ class PuterService : Service() {
                     }
                 }
 
-                webChromeClient = com.blurr.voice.PuterWebChromeClient()
+                webChromeClient = PuterWebChromeClient()
             }
 
             // Load the Puter bridge HTML
@@ -705,7 +706,7 @@ class PuterService : Service() {
                     localStorage.setItem('puter_auth_token', '$token');  
                   
                     // If Puter.js has a method to set auth token, call it  
-                    if (typeof puter !== 'undefined' && puter.auth && puter.auth.setToken) {  
+                    if (typeof puter !== 'undefined' && puter.auth.setToken) {  
                         puter.auth.setToken('$token');  
                     }  
                   
