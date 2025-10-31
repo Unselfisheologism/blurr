@@ -7,7 +7,6 @@ import android.os.Binder
 import android.os.IBinder
 import android.util.Log
 import android.view.ViewGroup
-import android.view.Window
 import android.webkit.*
 import android.os.Message
 import com.blurr.voice.LoginActivity
@@ -754,6 +753,7 @@ class PuterService : Service() {
                         signInCallback?.invoke(false)
                         signInCallback = null
                     }
+                }
                 "getuser" -> {
                     // Handle get user response
                     Log.d(TAG, "Received get user response: $response")
