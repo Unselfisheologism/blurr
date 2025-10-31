@@ -4,8 +4,12 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.net.Uri
 import android.os.IBinder
 import android.util.Log
+import android.webkit.*
+import androidx.browser.customtabs.CustomTabsIntent
+import androidx.core.content.ContextCompat
 import com.blurr.voice.services.PuterService
 import com.blurr.voice.data.TaskHistoryItem
 import java.util.concurrent.CompletableFuture
@@ -17,6 +21,7 @@ class PuterManager private constructor(private val context: Context) {
     private var callbackCounter = 0
     private val TAG = "PuterManager"
     private var authCallback: ((Boolean) -> Unit)? = null
+    private var WebView: WebView? = null
 
     companion object {
         @Volatile
@@ -44,10 +49,10 @@ class PuterManager private constructor(private val context: Context) {
         }
     }
 
-    private fun setupWebView(WebView: WebView) {
-        this.WebView = WebView
+    private fun setupWebView(webView: WebView) {
+        this.WebView = webView
     
-        WebView.WebViewClient = object : WebViewClient() {
+        webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url.toString()
                 Log.d(TAG, "WebView URL request: $url")
@@ -79,14 +84,14 @@ class PuterManager private constructor(private val context: Context) {
                     if (!token.isNullOrEmpty()) {
                         Log.d(TAG, "Token extracted from callback URL")
                     
-                        WebView.post {
+                        webView.post {
                             val jsCode = """
                                 if (typeof window.__puterAuthResolver === 'function') {
                                     window.__puterAuthResolver({token: '$token'});
                                     window.__puterAuthResolver = null;
                                 }
                             """.trimIndent()
-                            WebView.evaluateJavascript(jsCode, null)
+                            webView.evaluateJavascript(jsCode, null)
                         }
                     }
                     return true
@@ -96,19 +101,19 @@ class PuterManager private constructor(private val context: Context) {
             }
         
             override fun onReceivedError(
-                view: WebView?,
-                request: WebResourceRequest?,
-                error: WebResourceError?
+                view: WebView,
+                request: WebResourceRequest,
+                error: WebResourceError
             ) {
                 super.onReceivedError(view, request, error)
-                Log.e(TAG, "WebView error: ${error?.description}")
+                Log.e(TAG, "WebView error: ${error.description}")
             }
         
-            override fun onPageFinished(view: WebView?, url: String?) {
+            override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 Log.d(TAG, "Page finished: $url")
             
-                view?.evaluateJavascript("""
+                view.evaluateJavascript("""
                     if (typeof window.AndroidInterface === 'undefined') {
                         window.AndroidInterface = {
                             onAuthSuccess: function(userJson) {
@@ -123,7 +128,7 @@ class PuterManager private constructor(private val context: Context) {
             }
         }
     
-        WebView.addJavascriptInterface(object : Any() {
+        webView.addJavascriptInterface(object : Any() {
             @JavascriptInterface
             fun onAuthSuccess(userJson: String) {
                 Log.d(TAG, "JS reports auth success: $userJson")
@@ -139,7 +144,7 @@ class PuterManager private constructor(private val context: Context) {
             }
         }, "AndroidInterface")
     
-        WebView.loadUrl("file:///android_asset/puter_WebView.html")
+        webView.loadUrl("file:///android_asset/puter_WebView.html")
     }
 
     fun initialize() {

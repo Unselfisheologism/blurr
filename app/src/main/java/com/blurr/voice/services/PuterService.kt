@@ -53,9 +53,9 @@ class PuterService : Service() {
                     cacheMode = WebSettings.LOAD_DEFAULT
                 }
 
-                WebViewClient = object : WebViewClient() {
-                    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {  
-                        val url = request?.url?.toString() ?: return false  
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {  
+                        val url = request.url.toString() ?: return false  
       
                         // Intercept Puter.js authentication URLs  
                         if (url.contains("puter.com/action/sign-in") ||   
@@ -74,16 +74,16 @@ class PuterService : Service() {
                         return false  
                     }
 
-                    override fun onPageFinished(view: WebView?, url: String?) {
+                    override fun onPageFinished(view: WebView, url: String) {
                         super.onPageFinished(view, url)
                         Log.d(TAG, "Page finished loading: $url")
                         // Inject Android interface after page loads
-                        view?.addJavascriptInterface(AndroidInterface(), "AndroidInterface")
+                        view.addJavascriptInterface(AndroidInterface(), "AndroidInterface")
                     }
                 }
 
                 webChromeClient = object : WebChromeClient() {
-                    override fun onJsAlert(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
+                    override fun onJsAlert(view: WebView, url: String?, message: String?, result: JsResult): Boolean {
                         android.widget.Toast.makeText(this@PuterService, message, android.widget.Toast.LENGTH_SHORT).show()
                         result?.confirm()
                         return true
