@@ -11,28 +11,36 @@ class PuterWebChromeClient : WebChromeClient() {
     private var popupDialog: Dialog? = null
     
     override fun onCreateWindow(
-        view: WebView?,
+        view: WebView,
         isDialog: Boolean,
         isUserGesture: Boolean,
-        resultMsg: Message?
+        resultMsg: Message
     ): Boolean {
-        popupWebView = WebView(view?.context ?: return false).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.javaScriptCanOpenWindowsAutomatically = true
-            settings.setSupportMultipleWindows(true)
+        // Create popup WebView with all required settings
+        popupWebView = WebView(view.context).apply {
+            settings.apply {
+                javaScriptEnabled = true
+                domStorageEnabled = true
+                setSupportMultipleWindows(true)  // Essential for popup windows
+                javaScriptCanOpenWindowsAutomatically = true  // Must be true
+                allowFileAccess = true
+                allowContentAccess = true
+                databaseEnabled = true
+                // Set a proper user agent to ensure mobile-optimized experience
+                userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.0.0 Mobile Safari/537.36 PuterApp"
+            }
             
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
-                    view: WebView?,
-                    request: WebResourceRequest?
+                    view: WebView,
+                    request: WebResourceRequest
                 ): Boolean {
-                    return false
+                    return false // Let WebView handle all URLs
                 }
             }
             
             webChromeClient = object : WebChromeClient() {
-                override fun onCloseWindow(window: WebView?) {
+                override fun onCloseWindow(window: WebView) {
                     popupDialog?.dismiss()
                     popupWebView?.destroy()
                     popupWebView = null
@@ -40,8 +48,9 @@ class PuterWebChromeClient : WebChromeClient() {
             }
         }
         
-        popupDialog = Dialog(view?.context ?: return false, android.R.style.Theme_Black_NoTitleBar_Fullscreen).apply {
-            popupWebView?.let { setContentView(it) }
+        // Create dialog to display popup WebView
+        popupDialog = Dialog(view.context, android.R.style.Theme_Black_NoTitleBar_Fullscreen).apply {
+            setContentView(popupWebView)
             setCancelable(true)
             setOnCancelListener {
                 popupWebView?.destroy()
@@ -50,14 +59,15 @@ class PuterWebChromeClient : WebChromeClient() {
             show()
         }
         
-        val transport = resultMsg?.obj as? WebView.WebViewTransport
-        transport?.webView = popupWebView
-        resultMsg?.sendToTarget()
+        // Send the WebView to the message
+        val transport = resultMsg.obj as WebView.WebViewTransport
+        transport.webView = popupWebView
+        resultMsg.sendToTarget()
         
         return true
     }
     
-    override fun onCloseWindow(window: WebView?) {
+    override fun onCloseWindow(window: WebView) {
         popupDialog?.dismiss()
         popupWebView?.destroy()
         popupWebView = null

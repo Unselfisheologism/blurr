@@ -48,24 +48,22 @@ class PuterService : Service() {
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
-                    databaseEnabled = true
                     mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                    setSupportMultipleWindows(true)
-                    javaScriptCanOpenWindowsAutomatically = true
-                    // Enable DOM storage for better persistence
-                    domStorageEnabled = true
-                    // Enable database for better persistence
-                    databaseEnabled = true
+                    setSupportMultipleWindows(true) // Essential for popup windows - required for Puter.js auth
+                    javaScriptCanOpenWindowsAutomatically = true // Must be true for popup creation - required for Puter.js auth
+                    allowFileAccess = true
+                    allowContentAccess = true
+                    databaseEnabled = true  // Required for proper popup functionality
                     // Enable cache mode
                     cacheMode = WebSettings.LOAD_DEFAULT
-                    // Set user agent to include "Mobile" for mobile-optimized experience
-                    userAgentString = "$userAgentString PuterAndroidApp"
+                    // Set a proper user agent to ensure mobile-optimized experience
+                    userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.0.0 Mobile Safari/537.36 PuterApp"
                 }
 
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {  
                         val url = request?.url?.toString() ?: return false  
-              
+            
                         // This should no longer be needed since we're using popup WebViews
                         Log.d(TAG, "Main WebView loading URL: $url")
                         return false
@@ -644,6 +642,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
+    
     // Authentication check if signed in functionality
     fun puterAuthIsSignedIn(callback: (Boolean) -> Unit) {
         val callbackId = "authcheck_" + System.currentTimeMillis()
