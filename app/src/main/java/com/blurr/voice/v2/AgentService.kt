@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import org.json.JSONObject
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
@@ -309,9 +310,12 @@ class AgentService : Service() {
                 "errorMessage" to null
             )
 
+            // Convert the map to JSON string for puter.js
+            val taskEntryJson = JSONObject(taskEntry as Map<String, Any?>).toString()
+            
             // Save the task to puter.js key-value store
             val taskKey = "task_${System.currentTimeMillis()}"
-            puterManager.saveTaskToKvStore(taskKey, taskEntry)
+            puterManager.saveTaskToKvStore(taskKey, taskEntryJson)
             
             Log.d(TAG, "Successfully tracked task start in puter.js: $task")
         } catch (e: Exception) {
@@ -338,9 +342,12 @@ class AgentService : Service() {
                 "errorMessage" to errorMessage
             )
 
+            // Convert the map to JSON string for puter.js
+            val completionEntryJson = JSONObject(completionEntry as Map<String, Any?>).toString()
+            
             // Save the completion status to puter.js key-value store
             val completionKey = "completion_${System.currentTimeMillis()}"
-            puterManager.saveTaskToKvStore(completionKey, completionEntry)
+            puterManager.saveTaskToKvStore(completionKey, completionEntryJson)
             
             Log.d(TAG, "Successfully tracked task completion in puter.js: $task (success: $success)")
         } catch (e: Exception) {

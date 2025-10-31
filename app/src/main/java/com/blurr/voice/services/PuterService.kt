@@ -140,18 +140,20 @@ class PuterService : Service() {
                 }  
             }  
               
-            // Create dialog to display popup WebView  
-            popupDialog = Dialog(view?.context ?: return false, android.R.style.Theme_Black_NoTitleBar_Fullscreen).apply {  
-                requestWindowFeature(Window.FEATURE_NO_TITLE)  
-                setContentView(popupWebView)  
-                setCancelable(true)  
-                setOnCancelListener {  
-                    Log.d(TAG, "Popup dialog cancelled")  
-                    popupWebView?.destroy()  
-                    popupWebView = null  
-                }  
-                show()  
-            }  
+            // Create dialog to display popup WebView with null safety
+            popupWebView?.let { webView ->
+                popupDialog = Dialog(this@PuterService, android.R.style.Theme_Black_NoTitleBar_Fullscreen).apply {  
+                    requestWindowFeature(Window.FEATURE_NO_TITLE)  
+                    setContentView(webView)  
+                    setCancelable(true)  
+                    setOnCancelListener {  
+                        Log.d(TAG, "Popup dialog cancelled")  
+                        popupWebView?.destroy()  
+                        popupWebView = null  
+                    }  
+                    show()  
+                }
+            }
               
             // Send the WebView to the message  
             val transport = resultMsg?.obj as? WebView.WebViewTransport  
