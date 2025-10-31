@@ -1,18 +1,14 @@
 package com.blurr.voice
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.webkit.WebView
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.browser.customtabs.CustomTabsIntent
-import androidx.core.content.ContextCompat
 import com.blurr.voice.utilities.OnboardingManager
 import com.blurr.voice.utilities.UserProfileManager
 import com.blurr.voice.managers.PuterManager
@@ -45,15 +41,11 @@ class LoginActivity : AppCompatActivity() {
         puterSignInButton.setOnClickListener {
             signInWithPuter()
         }
-        
-        // Handle authentication response from Custom Tabs
-        handleAuthResponse(intent)
     }
     
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        setIntent(intent)
-        handleAuthResponse(intent)
+        // No longer needed since we're using popup WebView for auth
     }
 
     private fun signInWithPuter() {
@@ -61,8 +53,7 @@ class LoginActivity : AppCompatActivity() {
         loadingText.visibility = View.VISIBLE
         puterSignInButton.isEnabled = false
     
-        // CORRECT: Use PuterManager's signIn method properly
-        
+        // Use PuterManager's signIn method which will handle popup WebView
         val signInFuture = PuterManager.getInstance(this).signIn()
 
         signInFuture.whenComplete { success, error ->
@@ -75,54 +66,8 @@ class LoginActivity : AppCompatActivity() {
                     finish()    
                 } else {
                     puterSignInButton.isEnabled = true
-                    Toast.makeText (this, "Authentication failed", Toast.LENGTH_SHORT).show()
-                    Log.e("LoginActivity", "Sign in failed", error) 
-                }
-            }
-        }
-    }
-
-    private fun handleAuthResponse(intent: Intent) {
-        val data = intent.data 
-        Log.d("LoginActivity", "Received intent: $data")
-        // CRITICAL: Check if this is our authentication callback (must match puter_WebView.html)
-        if (data != null && data.toString().startsWith("blurr://auth")) {
-            Log.d("LoginActivity", "Detected authentication callback with $data")
-            // Extract token directly from query parameters (Puter.js uses query params, not fragment)
-            val token = data.getQueryParameter("token")
-            val error = data.getQueryParameter("error")
-    
-          if (!token.isNullOrEmpty()) {
-              Log.d("LoginActivity", "Authentication successful, token received: ${token.take(5)}...")
-              // Save token securely
-              val editor = getSharedPreferences("auth", MODE_PRIVATE).edit()
-              editor.putString("puter_token", token)
-              editor.putBoolean("is_authenticated", true)
-              editor.apply()
-        
-              // Proceed to main activity
-              runOnUiThread {
-                  progressBar.visibility = View.GONE
-                  loadingText.visibility = View.GONE
-                  Toast.makeText(this, "Successfully authenticated!", Toast.LENGTH_SHORT).show()
-                  startActivity(Intent(this, MainActivity::class.java))
-                  finish()
-                }
-            } else if (!error.isNullOrEmpty()) {
-                Log.e("LoginActivity", "Authentication error: $error")
-                runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    loadingText.visibility = View.GONE
-                    puterSignInButton.isEnabled = true
-                    Toast.makeText(this, "Authentication failed: $error", Toast.LENGTH_SHORT).show()
-                }
-            } else {
-                Log.e("LoginActivity", "Unknown authentication failure")
-                runOnUiThread {
-                    progressBar.visibility = View.GONE
-                    loadingText.visibility = View.GONE
-                    puterSignInButton.isEnabled = true
                     Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show()
+                    Log.e(TAG, "Sign in failed", error) 
                 }
             }
         }

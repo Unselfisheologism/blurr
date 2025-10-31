@@ -45,7 +45,6 @@ android {
         
         
         
-        
 
         
         buildConfigField("boolean", "ENABLE_LOGGING", "true")
@@ -109,9 +108,8 @@ dependencies {
     // https://mvnrepository.com/artifact/androidx.test.uiautomator/uiautomator
     implementation("androidx.test.uiautomator:uiautomator:2.3.0")
 
-    // Browser dependency for CustomTabsIntent
-    implementation("androidx.browser:browser:1.8.0")
-
+    // Remove Browser dependency for CustomTabsIntent since we're using popup WebView
+    // implementation("androidx.browser:browser:1.8.0")
     
     
     // Room database dependencies

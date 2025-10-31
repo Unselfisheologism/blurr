@@ -7,30 +7,24 @@
 </head>
 <body>
     <script>
-        // CRITICAL: Configure Puter.js with correct redirect URI
-        // MUST MATCH what's in AndroidManifest.xml (blurr://auth)
-        puter.config({
-            redirect_uri: "blurr://auth"
-        });
-        
-        // CRITICAL: Store the auth resolver to complete authentication later
+        // Store the auth resolver to complete authentication later
         window.__puterAuthResolver = null;
         
-        // CRITICAL: Override Puter's auth methods to handle mobile limitations
+        // Override Puter's auth methods to handle mobile limitations
         const originalSignIn = puter.auth.signIn;
-        puter.auth.signIn = function() {
+        puter.auth.signIn = function(options = {}) {
             return new Promise((resolve, reject) => {
                 try {
-                    console.log("Mobile: Overriding signIn to handle Custom Tabs");
+                    console.log("Mobile: Overriding signIn to handle popup authentication");
                     
-                    // Store the resolver to be called later
+                    // Store the resolver to be called later when authentication completes
                     window.__puterAuthResolver = resolve;
                     
-                    // Call the original method which will try to open a popup
-                    originalSignIn.call(puter.auth);
+                    // Call the original method which will open a popup window for authentication
+                    originalSignIn.call(puter.auth, options);
                     
                     // We don't return anything here - the resolver will be called later
-                    // when authentication completes via the Android interface
+                    // when authentication completes via the popup window
                 } catch (error) {
                     console.error("Error in signIn override:", error);
                     reject(error);
@@ -38,7 +32,7 @@
             });
         };
         
-        // CRITICAL: Add event listeners for Android to trigger auth completion
+        // Add event listeners for Android to trigger auth completion
         window.AndroidInterface = {
             onAuthSuccess: function(userJson) {
                 console.log("Android reports auth success:", userJson);
@@ -49,6 +43,9 @@
                         window.__puterAuthResolver = null;
                     } catch (e) {
                         console.error("Error parsing user JSON:", e);
+                        // If parsing fails, resolve with null to indicate failure
+                        window.__puterAuthResolver(null);
+                        window.__puterAuthResolver = null;
                     }
                 }
             },
@@ -77,22 +74,28 @@
                 console.log("User signed out");
             });
             
-            // Check if we're in an authentication popup
-            if (window.opener && window.location.search.includes("embedded_in_popup=true")) {
-                console.log("Detected authentication popup window");
+            // Listen for postMessage events from popup windows
+            window.addEventListener("message", function(event) {
+                console.log("Received message from popup:", event.data);
                 
-                // Handle authentication completion
-                window.addEventListener("message", function(event) {
-                    if (event.data && event.data.type === "PUTER_AUTH_COMPLETE") {
-                        console.log("Authentication completed in popup", event.data);
-                        window.opener.postMessage({
-                            type: "PUTER_AUTH_COMPLETE",
-                            token: event.data.token
-                        }, "*");
-                        window.close();
+                // Check if this is an authentication completion message
+                if (event.data && event.data.type === "PUTER_AUTH_COMPLETE") {
+                    console.log("Authentication completed with token:", event.data.token);
+                    
+                    // Store the token in localStorage for future use
+                    if (event.data.token) {
+                        localStorage.setItem('puter_auth_token', event.data.token);
+                        
+                        // Call the Android interface to notify of successful authentication
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAuthSuccess(JSON.stringify({
+                                token: event.data.token,
+                                authenticated: true
+                            }));
+                        }
                     }
-                });
-            }
+                }
+            });
         });
         
         // Bridge functions to interact with Puter.js from native Android code
@@ -333,7 +336,7 @@
             }
         }
 
-        // Authentication functions - simplified since authentication is handled via Custom Tabs
+        // Authentication functions - simplified since authentication is handled via popup
         async function puterAuthSignOut() {
             try {
                 const response = await puter.auth.signOut();
@@ -360,25 +363,6 @@
             } catch (error) {
                 console.error('Get User error:', error);
                 throw error;
-            }
-        }
-        
-        // Function to handle authentication callback from Android
-        function handleAuthCallback(token) {
-            console.log("Handling auth callback with token:", token);
-            // This function will be called when the Android app receives the auth token
-            // We can use this to complete the authentication in the Puter.js context
-            if (token) {
-                // Puter.js should automatically handle the authentication completion
-                // when the redirect comes back with the token
-                console.log("Auth callback handled, token received:", token);
-                
-                // Notify Android that authentication is complete
-                if (window.AndroidInterface) {
-                    window.AndroidInterface.onAuthSuccess(JSON.stringify({token: token, status: "authenticated"}));
-                }
-            } else {
-                console.error("Unable to handle auth callback - no token provided");
             }
         }
         

@@ -1,22 +1,23 @@
 package com.blurr.voice.services
 
+import android.app.Dialog
 import android.app.Service
 import android.content.Intent
-import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
+import android.view.ViewGroup
+import android.view.Window
 import android.webkit.*
-import androidx.browser.customtabs.CustomTabsIntent
-import androidx.core.content.ContextCompat
 import com.blurr.voice.LoginActivity
 
 class PuterService : Service() {
-    private var WebView: WebView? = null
+    private var webView: WebView? = null
     private val binder = PuterBinder()
-    private var signInCallback: ((Boolean) -> Unit)? = null
-    private var authUrlCallback: ((String) -> Unit)? = null
+    var signInCallback: ((Boolean) -> Unit)? = null
     private val callbacks = mutableMapOf<String, (String?) -> Unit>()
+    private var popupWebView: WebView? = null
+    private var popupDialog: Dialog? = null
 
     companion object {
         const val TAG = "PuterService"
@@ -37,7 +38,12 @@ class PuterService : Service() {
 
     private fun initializeWebView() {
         try {
-            WebView = WebView(this).apply {
+            webView = WebView(this).apply {
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+                )
+                
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
@@ -51,27 +57,17 @@ class PuterService : Service() {
                     databaseEnabled = true
                     // Enable cache mode
                     cacheMode = WebSettings.LOAD_DEFAULT
+                    // Set user agent to include "Mobile" for mobile-optimized experience
+                    userAgentString = "$userAgentString PuterAndroidApp"
                 }
 
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {  
                         val url = request.url.toString() ?: return false  
-      
-                        // Intercept Puter.js authentication URLs  
-                        if (url.contains("puter.com/action/sign-in") ||   
-                            url.contains("puter.com/?embedded_in_popup=true") ||  
-                            url.contains("request_auth=true")) {  
-          
-                           Log.d(TAG, "Intercepting auth URL from puter.auth.signIn(): $url")  
-          
-                           // Launch Chrome Custom Tabs instead  
-                           authUrlCallback?.invoke(url)  
-          
-                           // Prevent WebView from loading this URL  
-                           return true  
-                        }  
-      
-                        return false  
+              
+                        // This should no longer be needed since we're using popup WebViews
+                        Log.d(TAG, "Main WebView loading URL: $url")
+                        return false
                     }
 
                     override fun onPageFinished(view: WebView, url: String) {
@@ -82,81 +78,92 @@ class PuterService : Service() {
                     }
                 }
 
-                webChromeClient = object : WebChromeClient() {
-                    override fun onJsAlert(view: WebView, url: String?, message: String?, result: JsResult): Boolean {
-                        android.widget.Toast.makeText(this@PuterService, message, android.widget.Toast.LENGTH_SHORT).show()
-                        result?.confirm()
-                        return true
-                    }
-                }
+                webChromeClient = PuterWebChromeClient() // Use custom WebChromeClient
             }
 
             // Load the Puter bridge HTML
-            WebView?.loadUrl("file:///android_asset/puter_WebView.html")
+            webView?.loadUrl("file:///android_asset/puter_webview.html")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing WebView", e)
         }
     }
-
-    fun setAuthUrlCallback(callback: (String) -> Unit) {
-        authUrlCallback = callback
-    }
     
-    fun puterAuthIsSignedIn(callback: (Boolean) -> Unit) {
-        WebView?.post {
-            val jsCode = """
-                var isSignedIn = puterAuthIsSignedIn();
-                if (window.AndroidInterface) {
-                    window.AndroidInterface.onAIResponse(JSON.stringify(isSignedIn), "authcheck");
-                }
-            """.trimIndent()
-            
-            WebView?.evaluateJavascript(jsCode, null)
-        }
-    }
-
-    fun puterAuthGetUser(callback: (String?) -> Unit) {
-        WebView?.post {
-            val jsCode = """
-                puterAuthGetUser()
-                    .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), "getuser");
-                        }
-                    })
-                    .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, "getuser");
-                        }
-                    });
-            """.trimIndent()
-            
-            WebView?.evaluateJavascript(jsCode, null)
-        }
-    }
-
-    fun injectAuthToken(token: String) {  
-        WebView?.post {  
-            val jsCode = """  
-                (function() {  
-                    // Store token in localStorage for Puter.js to use  
-                    localStorage.setItem('puter_auth_token', '$token');  
-                  
-                    // If Puter.js has a method to set auth token, call it  
-                    if (typeof puter !== 'undefined' && puter.auth && puter.auth.setToken) {  
-                        puter.auth.setToken('$token');  
-                    }  
-                  
-                    // Notify that authentication is complete  
-                    if (window.AndroidInterface) {  
-                        window.AndroidInterface.onAuthSuccess('{"success": true}');  
-                    }  
-                })();  
-            """.trimIndent()  
+    // Custom WebChromeClient to handle popup windows
+    inner class PuterWebChromeClient : WebChromeClient() {
+        private var popupWebView: WebView? = null
+        private var popupDialog: Dialog? = null
           
-            WebView?.evaluateJavascript(jsCode) { result ->  
-                Log.d(TAG, "Token injection result: $result")  
+        override fun onCreateWindow(
+            view: WebView?,  
+            isDialog: Boolean,  
+            isUserGesture: Boolean,  
+            resultMsg: Message?  
+        ): Boolean {  
+            Log.d(TAG, "onCreateWindow called - creating popup WebView")  
+              
+            // Create popup WebView  
+            popupWebView = WebView(view?.context ?: return false).apply {  
+                settings.apply {  
+                    javaScriptEnabled = true  
+                    domStorageEnabled = true  
+                    javaScriptCanOpenWindowsAutomatically = true  
+                    setSupportMultipleWindows(true)  
+                    userAgentString = "$userAgentString PuterAndroidApp"  
+                }  
+                  
+                // Set WebViewClient to handle navigation  
+                webViewClient = object : WebViewClient() {  
+                    override fun shouldOverrideUrlLoading(  
+                        view: WebView?,  
+                        request: WebResourceRequest?  
+                    ): Boolean {  
+                        Log.d(TAG, "Popup WebView loading: ${request?.url}")  
+                        return false // Let WebView handle all URLs  
+                    }  
+                      
+                    override fun onPageFinished(view: WebView?, url: String?) {  
+                        super.onPageFinished(view, url)  
+                        Log.d(TAG, "Popup WebView finished loading: $url")  
+                    }  
+                }  
+                  
+                // Set WebChromeClient for the popup  
+                webChromeClient = object : WebChromeClient() {  
+                    override fun onCloseWindow(window: WebView?) {  
+                        Log.d(TAG, "onCloseWindow called for popup")  
+                        popupDialog?.dismiss()  
+                        popupWebView?.destroy()  
+                        popupWebView = null  
+                    }  
+                }  
             }  
+              
+            // Create dialog to display popup WebView  
+            popupDialog = Dialog(view.context, android.R.style.Theme_Black_NoTitleBar_Fullscreen).apply {  
+                requestWindowFeature(Window.FEATURE_NO_TITLE)  
+                setContentView(popupWebView)  
+                setCancelable(true)  
+                setOnCancelListener {  
+                    Log.d(TAG, "Popup dialog cancelled")  
+                    popupWebView?.destroy()  
+                    popupWebView = null  
+                }  
+                show()  
+            }  
+              
+            // Send the WebView to the message  
+            val transport = resultMsg?.obj as? WebView.WebViewTransport  
+            transport?.webView = popupWebView  
+            resultMsg?.sendToTarget()  
+              
+            return true  
+        }  
+          
+        override fun onCloseWindow(window: WebView?) {  
+            Log.d(TAG, "onCloseWindow called for main WebView")  
+            popupDialog?.dismiss()  
+            popupWebView?.destroy()  
+            popupWebView = null  
         }  
     }
 
@@ -164,7 +171,7 @@ class PuterService : Service() {
     fun executePuterChat(query: String, callback: (String?) -> Unit) {
         val callbackId = "chat_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterChat('$query')
                     .then(response => {
@@ -179,7 +186,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -187,7 +194,7 @@ class PuterService : Service() {
     fun executePuterTxt2Img(prompt: String, callback: (String?) -> Unit) {
         val callbackId = "txt2img_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterTxt2Img('$prompt')
                     .then(response => {
@@ -202,7 +209,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -210,7 +217,7 @@ class PuterService : Service() {
     fun executePuterImg2Txt(imageData: String, callback: (String?) -> Unit) {
         val callbackId = "img2txt_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterImg2Txt('$imageData')
                     .then(response => {
@@ -225,7 +232,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -233,7 +240,7 @@ class PuterService : Service() {
     fun executePuterTxt2Speech(text: String, callback: (String?) -> Unit) {
         val callbackId = "txt2speech_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterTxt2Speech('$text')
                     .then(response => {
@@ -248,7 +255,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -256,7 +263,7 @@ class PuterService : Service() {
     fun puterKvGet(key: String, callback: (String?) -> Unit) {
         val callbackId = "kvget_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterKvGet('$key')
                     .then(response => {
@@ -271,7 +278,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -279,7 +286,7 @@ class PuterService : Service() {
     fun puterKvSet(key: String, value: String, callback: (String?) -> Unit) {
         val callbackId = "kvset_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterKvSet('$key', '$value')
                     .then(response => {
@@ -294,7 +301,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -302,7 +309,7 @@ class PuterService : Service() {
     fun puterKvDel(key: String, callback: (String?) -> Unit) {
         val callbackId = "kvdeld_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterKvDel('$key')
                     .then(response => {
@@ -317,7 +324,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -325,7 +332,7 @@ class PuterService : Service() {
     fun puterKvList(pattern: String, returnValues: Boolean, callback: (String?) -> Unit) {
         val callbackId = "kvlist_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterKvList('$pattern', $returnValues)
                     .then(response => {
@@ -340,7 +347,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -348,7 +355,7 @@ class PuterService : Service() {
     fun puterKvIncr(key: String, amount: Int, callback: (String?) -> Unit) {
         val callbackId = "kvincr_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterKvIncr('$key', $amount)
                     .then(response => {
@@ -363,7 +370,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -371,7 +378,7 @@ class PuterService : Service() {
     fun puterKvDecr(key: String, amount: Int, callback: (String?) -> Unit) {
         val callbackId = "kvdecr_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterKvDecr('$key', $amount)
                     .then(response => {
@@ -386,7 +393,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -394,7 +401,7 @@ class PuterService : Service() {
     fun puterKvFlush(callback: (String?) -> Unit) {
         val callbackId = "kvflush_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterKvFlush()
                     .then(response => {
@@ -409,7 +416,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -417,7 +424,7 @@ class PuterService : Service() {
     fun executePuterChatStream(query: String, onChunkCallback: (String) -> Unit, callback: (String?) -> Unit) {
         val callbackId = "chatstream_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterChatStream('$query', function(chunk) {
                     if (window.AndroidInterface) {
@@ -436,7 +443,7 @@ class PuterService : Service() {
                 });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -444,7 +451,7 @@ class PuterService : Service() {
     fun executePuterFsWrite(path: String, data: String, optionsJson: String, callback: (String?) -> Unit) {
         val callbackId = "fswrite_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterFsWrite('$path', '$data', JSON.parse('$optionsJson'))
                     .then(response => {
@@ -459,7 +466,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -467,7 +474,7 @@ class PuterService : Service() {
     fun executePuterFsRead(path: String, optionsJson: String, callback: (String?) -> Unit) {
         val callbackId = "fsread_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterFsRead('$path', JSON.parse('$optionsJson'))
                     .then(response => {
@@ -482,7 +489,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -490,7 +497,7 @@ class PuterService : Service() {
     fun executePuterFsMkdir(path: String, optionsJson: String, callback: (String?) -> Unit) {
         val callbackId = "fsmkdir_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterFsMkdir('$path', JSON.parse('$optionsJson'))
                     .then(response => {
@@ -505,7 +512,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -513,7 +520,7 @@ class PuterService : Service() {
     fun executePuterFsReaddir(path: String, callback: (String?) -> Unit) {
         val callbackId = "fsreaddir_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterFsReaddir('$path')
                     .then(response => {
@@ -528,7 +535,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -536,7 +543,7 @@ class PuterService : Service() {
     fun executePuterFsDelete(path: String, optionsJson: String, callback: (String?) -> Unit) {
         val callbackId = "fsdelete_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterFsDelete('$path', JSON.parse('$optionsJson'))
                     .then(response => {
@@ -551,7 +558,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -559,7 +566,7 @@ class PuterService : Service() {
     fun executePuterFsMove(source: String, destination: String, optionsJson: String, callback: (String?) -> Unit) {
         val callbackId = "fsmove_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterFsMove('$source', '$destination', JSON.parse('$optionsJson'))
                     .then(response => {
@@ -574,7 +581,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -582,7 +589,7 @@ class PuterService : Service() {
     fun executePuterFsCopy(source: String, destination: String, optionsJson: String, callback: (String?) -> Unit) {
         val callbackId = "fscopy_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterFsCopy('$source', '$destination', JSON.parse('$optionsJson'))
                     .then(response => {
@@ -597,7 +604,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -605,7 +612,7 @@ class PuterService : Service() {
     fun executePuterFsRename(path: String, newName: String, callback: (String?) -> Unit) {
         val callbackId = "fsrename_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterFsRename('$path', '$newName')
                     .then(response => {
@@ -620,7 +627,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -628,7 +635,7 @@ class PuterService : Service() {
     fun executePuterFsStat(path: String, callback: (String?) -> Unit) {
         val callbackId = "fsstat_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterFsStat('$path')
                     .then(response => {
@@ -643,7 +650,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -651,7 +658,7 @@ class PuterService : Service() {
     fun executePuterFsSpace(callback: (String?) -> Unit) {
         val callbackId = "fsspace_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterFsSpace()
                     .then(response => {
@@ -666,7 +673,42 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // Authentication check if signed in functionality
+    fun puterAuthIsSignedIn(callback: (Boolean) -> Unit) {
+        webView?.post {
+            val jsCode = """
+                var isSignedIn = puterAuthIsSignedIn();
+                if (window.AndroidInterface) {
+                    window.AndroidInterface.onAIResponse(JSON.stringify({signedIn: isSignedIn}), "authcheck");
+                }
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    // Authentication get user functionality
+    fun puterAuthGetUser(callback: (String?) -> Unit) {
+        webView?.post {
+            val jsCode = """
+                puterAuthGetUser()
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), "getuser");
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, "getuser");
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -674,7 +716,7 @@ class PuterService : Service() {
     fun puterGetTaskHistoryFromKvStore(callback: (String?) -> Unit) {
         val callbackId = "taskhistory_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterKvList('task_*', true)
                     .then(response => {
@@ -689,7 +731,7 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
 
@@ -697,7 +739,7 @@ class PuterService : Service() {
     fun puterSaveTaskToKvStore(key: String, taskDataJson: String, callback: (String?) -> Unit) {
         val callbackId = "savetask_" + System.currentTimeMillis()
         callbacks[callbackId] = callback
-        WebView?.post {
+        webView?.post {
             val jsCode = """
                 puterKvSet('$key', JSON.parse('$taskDataJson'))
                     .then(response => {
@@ -712,13 +754,40 @@ class PuterService : Service() {
                     });
             """.trimIndent()
             
-            WebView?.evaluateJavascript(jsCode, null)
+            webView?.evaluateJavascript(jsCode, null)
         }
     }
+    
+    // Initialize Puter with an authentication token
+    fun injectAuthToken(token: String) {  
+        webView?.post {  
+            val jsCode = """  
+                (function() {  
+                    // Store token in localStorage for Puter.js to use  
+                    localStorage.setItem('puter_auth_token', '$token');  
+                  
+                    // If Puter.js has a method to set auth token, call it  
+                    if (typeof puter !== 'undefined' && puter.auth && puter.auth.setToken) {  
+                        puter.auth.setToken('$token');  
+                    }  
+                  
+                    // Notify that authentication is complete  
+                    if (window.AndroidInterface) {  
+                        window.AndroidInterface.onAuthSuccess('{"success": true}');  
+                    }  
+                })();  
+            """.trimIndent()  
+          
+            webView?.evaluateJavascript(jsCode) { result ->  
+                Log.d(TAG, "Token injection result: $result")  
+            }  
+        }  
+    }
+
     // Method to evaluate arbitrary JavaScript in the WebView
     fun evaluateJavascript(jsCode: String, resultCallback: ValueCallback<String>?) {
-        WebView?.post {
-            WebView?.evaluateJavascript(jsCode, resultCallback)
+        webView?.post {
+            webView?.evaluateJavascript(jsCode, resultCallback)
         }
     }
     
@@ -802,8 +871,8 @@ class PuterService : Service() {
     }
 
     override fun onDestroy() {
-        WebView?.destroy()
-        WebView = null
+        webView?.destroy()
+        webView = null
         super.onDestroy()
     }
 }
