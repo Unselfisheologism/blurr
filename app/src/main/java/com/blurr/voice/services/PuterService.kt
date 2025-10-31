@@ -28,7 +28,7 @@ class PuterService : Service() {
         fun getService(): PuterService = this@PuterService
     }
 
-    override fun onBind(intent: Intent?): IBBinder {
+    override fun onBind(intent: Intent?): IBinder {
         return binder
     }
 
@@ -721,6 +721,58 @@ class PuterService : Service() {
                             window.AndroidInterface.onAIError(error.message, '$callbackId');
                         }
                     });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+    // Authentication check if signed in functionality
+    fun puterAuthIsSignedIn(callback: (Boolean) -> Unit) {
+        val callbackId = "authcheck_" + System.currentTimeMillis()
+        callbacks[callbackId] = { response ->
+            try {
+                val signedIn = response?.let { 
+                    val jsonResponse = org.json.JSONObject(it)
+                    jsonResponse.optBoolean("signedIn", false)
+                } ?: false
+                callback(signedIn)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing auth check response", e)
+                callback(false)
+            }
+        }
+        webView?.post {
+            val jsCode = """
+                puter.auth.isSignedIn().then(signedIn => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify({signedIn: signedIn}), '$callbackId');
+                    }
+                }).catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, '$callbackId');
+                    }
+                });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+    
+    // Authentication get user functionality
+    fun puterAuthGetUser(callback: (String?) -> Unit) {
+        val callbackId = "getuser_" + System.currentTimeMillis()
+        callbacks[callbackId] = callback
+        webView?.post {
+            val jsCode = """
+                puter.auth.getUser().then(user => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIResponse(JSON.stringify(user), '$callbackId');
+                    }
+                }).catch(error => {
+                    if (window.AndroidInterface) {
+                        window.AndroidInterface.onAIError(error.message, '$callbackId');
+                    }
+                });
             """.trimIndent()
             
             webView?.evaluateJavascript(jsCode, null)

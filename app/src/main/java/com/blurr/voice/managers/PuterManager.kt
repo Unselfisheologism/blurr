@@ -79,7 +79,7 @@ class PuterManager private constructor(private val context: Context) {
         }
 
         // Call the service method to initiate sign in
-        puterService?.puterAuthIsSignedIn { signedIn ->
+        puterService?.puterAuthIsSignedIn { signedIn: Boolean ->
             if (signedIn) {
                 // Already signed in
                 future.complete(true)
@@ -333,7 +333,7 @@ class PuterManager private constructor(private val context: Context) {
     fun isSignedIn(): CompletableFuture<Boolean> {
         val future = CompletableFuture<Boolean>()
 
-        puterService?.puterAuthIsSignedIn { signedIn ->
+        puterService?.puterAuthIsSignedIn { signedIn: Boolean ->
             future.complete(signedIn)
         }
 
@@ -349,7 +349,7 @@ class PuterManager private constructor(private val context: Context) {
             future.complete(response ?: "")
         }
 
-        puterService?.puterAuthGetUser { response ->
+        puterService?.puterAuthGetUser { response: String? ->
             callbacks.remove(callbackId)?.invoke(response)
         }
 
@@ -661,7 +661,7 @@ class PuterManager private constructor(private val context: Context) {
         var result = false
         if (isBound) {
             val latch = java.util.concurrent.CountDownLatch(1)
-            puterService?.puterAuthIsSignedIn { signedIn ->
+            puterService?.puterAuthIsSignedIn { signedIn: Boolean ->
                 result = signedIn
                 latch.countDown()
             }
