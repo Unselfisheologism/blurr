@@ -54,7 +54,7 @@ class LoginActivity : AppCompatActivity() {
         puterSignInButton.isEnabled = false
     
         // Use PuterManager's signIn method which will handle popup WebView
-        val signInFuture = PuterManager.getInstance(this).signIn()
+        val signInFuture = puterManager.signIn()
 
         signInFuture.whenComplete { success, error ->
             runOnUiThread {
@@ -62,8 +62,7 @@ class LoginActivity : AppCompatActivity() {
                 loadingText.visibility = View.GONE
                 if (success == true) {
                     Toast.makeText(this, "Authentication successful!", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this, MainActivity::class.java))
-                    finish()    
+                    startPostAuthFlow()
                 } else {
                     puterSignInButton.isEnabled = true
                     Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show()

@@ -9,6 +9,7 @@ import android.util.Log
 import android.view.ViewGroup
 import android.view.Window
 import android.webkit.*
+import android.os.Message
 import com.blurr.voice.LoginActivity
 
 class PuterService : Service() {
@@ -62,23 +63,107 @@ class PuterService : Service() {
                 }
 
                 webViewClient = object : WebViewClient() {
-                    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {  
-                        val url = request.url.toString() ?: return false  
+                    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {  
+                        val url = request?.url?.toString() ?: return false  
               
-                        // This should no longer be needed since we're using popup WebViews
-                        Log.d(TAG, "Main WebView loading URL: $url")
-                        return false
+                        // Intercept Puter.js authentication URLs  
+                        if (url.contains("puter.com/action/sign-in") ||   
+                            url.contains("puter.com/?embedded_in_popup=true") ||  
+                            url.contains("request_auth=true")) {  
+                 
+                           Log.d(TAG, "Intercepting auth URL from puter.auth.signIn(): $url")  
+                 
+                           // Launch Chrome Custom Tabs instead  
+                           // authUrlCallback?.invoke(url)  
+                 
+                           // Prevent WebView from loading this URL  
+                           return true  
+                        }  
+              
+                        return false  
                     }
 
-                    override fun onPageFinished(view: WebView, url: String) {
+                    override fun onPageFinished(view: WebView?, url: String?) {
                         super.onPageFinished(view, url)
                         Log.d(TAG, "Page finished loading: $url")
                         // Inject Android interface after page loads
-                        view.addJavascriptInterface(AndroidInterface(), "AndroidInterface")
+                        view?.addJavascriptInterface(AndroidInterface(), "AndroidInterface")
                     }
                 }
 
-                webChromeClient = PuterWebChromeClient() // Use custom WebChromeClient
+                webChromeClient = object : WebChromeClient() {
+                    override fun onCreateWindow(
+                        view: WebView?,
+                        isDialog: Boolean,
+                        isUserGesture: Boolean,
+                        resultMsg: Message?
+                    ): Boolean {
+                        Log.d(TAG, "onCreateWindow called - creating popup WebView")
+                        
+                        // Create popup WebView
+                        popupWebView = WebView(view?.context ?: return false).apply {
+                            settings.apply {
+                                javaScriptEnabled = true
+                                domStorageEnabled = true
+                                databaseEnabled = true
+                                mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                                setSupportMultipleWindows(true)
+                                javaScriptCanOpenWindowsAutomatically = true
+                                // Set user agent to include "Mobile" for mobile-optimized experience
+                                userAgentString = "$userAgentString PuterAndroidApp"
+                            }
+                            
+                            webViewClient = object : WebViewClient() {
+                                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                                    val url = request?.url?.toString() ?: return false
+                                    Log.d(TAG, "Popup WebView loading: $url")
+                                    return false // Let WebView handle all URLs
+                                }
+                                
+                                override fun onPageFinished(view: WebView?, url: String?) {
+                                    super.onPageFinished(view, url)
+                                    Log.d(TAG, "Popup WebView finished loading: $url")
+                                }
+                            }
+                            
+                            webChromeClient = object : WebChromeClient() {
+                                override fun onCloseWindow(window: WebView?) {
+                                    Log.d(TAG, "onCloseWindow called for popup")
+                                    popupDialog?.dismiss()
+                                    popupWebView?.destroy()
+                                    popupWebView = null
+                                }
+                            }
+                        }
+                        
+                        // Create dialog to display popup WebView
+                        popupDialog = Dialog(view?.context ?: return false, android.R.style.Theme_Black_NoTitleBar_Fullscreen).apply {
+                            requestWindowFeature(Window.FEATURE_NO_TITLE)
+                            setContentView(popupWebView)
+                            setCancelable(true)
+                            setOnCancelListener {
+                                Log.d(TAG, "Popup dialog cancelled")
+                                popupWebView?.destroy()
+                                popupWebView = null
+                            }
+                            show()
+                        }
+                        
+                        // Send the WebView to the message
+                        val transport = resultMsg?.obj as? WebView.WebViewTransport
+                        transport?.webView = popupWebView
+                        resultMsg?.sendToTarget()
+                        
+                        return true
+                    }
+                    
+                    override fun onCloseWindow(window: WebView?) {
+                        Log.d(TAG, "onCloseWindow called for main WebView")
+                        popupDialog?.dismiss()
+                        popupWebView?.destroy()
+                        popupWebView = null
+                    }
+                }
             }
 
             // Load the Puter bridge HTML
@@ -88,82 +173,65 @@ class PuterService : Service() {
         }
     }
     
-    // Custom WebChromeClient to handle popup windows
-    inner class PuterWebChromeClient : WebChromeClient() {
-        private var popupWebView: WebView? = null
-        private var popupDialog: Dialog? = null
-          
-        override fun onCreateWindow(
-            view: WebView?,  
-            isDialog: Boolean,  
-            isUserGesture: Boolean,  
-            resultMsg: Message?  
-        ): Boolean {  
-            Log.d(TAG, "onCreateWindow called - creating popup WebView")  
-              
-            // Create popup WebView  
-            popupWebView = WebView(view?.context ?: return false).apply {  
-                settings.apply {  
-                    javaScriptEnabled = true  
-                    domStorageEnabled = true  
-                    javaScriptCanOpenWindowsAutomatically = true  
-                    setSupportMultipleWindows(true)  
-                    userAgentString = "$userAgentString PuterAndroidApp"  
-                }  
+    fun setAuthUrlCallback(callback: (String) -> Unit) {
+        // This is no longer needed since we're using popup WebViews
+    }
+    
+    fun puterAuthIsSignedIn(callback: (Boolean) -> Unit) {
+        webView?.post {
+            val jsCode = """
+                var isSignedIn = puterAuthIsSignedIn();
+                if (window.AndroidInterface) {
+                    window.AndroidInterface.onAIResponse(JSON.stringify({signedIn: isSignedIn}), "authcheck");
+                }
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    fun puterAuthGetUser(callback: (String?) -> Unit) {
+        webView?.post {
+            val jsCode = """
+                puterAuthGetUser()
+                    .then(response => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIResponse(JSON.stringify(response), "getuser");
+                        }
+                    })
+                    .catch(error => {
+                        if (window.AndroidInterface) {
+                            window.AndroidInterface.onAIError(error.message, "getuser");
+                        }
+                    });
+            """.trimIndent()
+            
+            webView?.evaluateJavascript(jsCode, null)
+        }
+    }
+
+    fun injectAuthToken(token: String) {  
+        webView?.post {  
+            val jsCode = """  
+                (function() {  
+                    // Store token in localStorage for Puter.js to use  
+                    localStorage.setItem('puter_auth_token', '$token');  
                   
-                // Set WebViewClient to handle navigation  
-                webViewClient = object : WebViewClient() {  
-                    override fun shouldOverrideUrlLoading(  
-                        view: WebView?,  
-                        request: WebResourceRequest?  
-                    ): Boolean {  
-                        Log.d(TAG, "Popup WebView loading: ${request?.url}")  
-                        return false // Let WebView handle all URLs  
+                    // If Puter.js has a method to set auth token, call it  
+                    if (typeof puter !== 'undefined' && puter.auth && puter.auth.setToken) {  
+                        puter.auth.setToken('$token');  
                     }  
-                      
-                    override fun onPageFinished(view: WebView?, url: String?) {  
-                        super.onPageFinished(view, url)  
-                        Log.d(TAG, "Popup WebView finished loading: $url")  
-                    }  
-                }  
                   
-                // Set WebChromeClient for the popup  
-                webChromeClient = object : WebChromeClient() {  
-                    override fun onCloseWindow(window: WebView?) {  
-                        Log.d(TAG, "onCloseWindow called for popup")  
-                        popupDialog?.dismiss()  
-                        popupWebView?.destroy()  
-                        popupWebView = null  
+                    // Notify that authentication is complete  
+                    if (window.AndroidInterface) {  
+                        window.AndroidInterface.onAuthSuccess('{"success": true}');  
                     }  
-                }  
-            }  
-              
-            // Create dialog to display popup WebView  
-            popupDialog = Dialog(view.context, android.R.style.Theme_Black_NoTitleBar_Fullscreen).apply {  
-                requestWindowFeature(Window.FEATURE_NO_TITLE)  
-                setContentView(popupWebView)  
-                setCancelable(true)  
-                setOnCancelListener {  
-                    Log.d(TAG, "Popup dialog cancelled")  
-                    popupWebView?.destroy()  
-                    popupWebView = null  
-                }  
-                show()  
-            }  
-              
-            // Send the WebView to the message  
-            val transport = resultMsg?.obj as? WebView.WebViewTransport  
-            transport?.webView = popupWebView  
-            resultMsg?.sendToTarget()  
-              
-            return true  
-        }  
+                })();  
+            """.trimIndent()  
           
-        override fun onCloseWindow(window: WebView?) {  
-            Log.d(TAG, "onCloseWindow called for main WebView")  
-            popupDialog?.dismiss()  
-            popupWebView?.destroy()  
-            popupWebView = null  
+            webView?.evaluateJavascript(jsCode) { result ->  
+                Log.d(TAG, "Token injection result: $result")  
+            }  
         }  
     }
 
@@ -677,41 +745,6 @@ class PuterService : Service() {
         }
     }
 
-    // Authentication check if signed in functionality
-    fun puterAuthIsSignedIn(callback: (Boolean) -> Unit) {
-        webView?.post {
-            val jsCode = """
-                var isSignedIn = puterAuthIsSignedIn();
-                if (window.AndroidInterface) {
-                    window.AndroidInterface.onAIResponse(JSON.stringify({signedIn: isSignedIn}), "authcheck");
-                }
-            """.trimIndent()
-            
-            webView?.evaluateJavascript(jsCode, null)
-        }
-    }
-
-    // Authentication get user functionality
-    fun puterAuthGetUser(callback: (String?) -> Unit) {
-        webView?.post {
-            val jsCode = """
-                puterAuthGetUser()
-                    .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), "getuser");
-                        }
-                    })
-                    .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, "getuser");
-                        }
-                    });
-            """.trimIndent()
-            
-            webView?.evaluateJavascript(jsCode, null)
-        }
-    }
-
     // Task history functionality
     fun puterGetTaskHistoryFromKvStore(callback: (String?) -> Unit) {
         val callbackId = "taskhistory_" + System.currentTimeMillis()
@@ -757,33 +790,6 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-    
-    // Initialize Puter with an authentication token
-    fun injectAuthToken(token: String) {  
-        webView?.post {  
-            val jsCode = """  
-                (function() {  
-                    // Store token in localStorage for Puter.js to use  
-                    localStorage.setItem('puter_auth_token', '$token');  
-                  
-                    // If Puter.js has a method to set auth token, call it  
-                    if (typeof puter !== 'undefined' && puter.auth && puter.auth.setToken) {  
-                        puter.auth.setToken('$token');  
-                    }  
-                  
-                    // Notify that authentication is complete  
-                    if (window.AndroidInterface) {  
-                        window.AndroidInterface.onAuthSuccess('{"success": true}');  
-                    }  
-                })();  
-            """.trimIndent()  
-          
-            webView?.evaluateJavascript(jsCode) { result ->  
-                Log.d(TAG, "Token injection result: $result")  
-            }  
-        }  
-    }
-
     // Method to evaluate arbitrary JavaScript in the WebView
     fun evaluateJavascript(jsCode: String, resultCallback: ValueCallback<String>?) {
         webView?.post {

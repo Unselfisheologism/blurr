@@ -84,11 +84,11 @@ class PuterManager private constructor(private val context: Context) {
                 // Already signed in
                 future.complete(true)
             } else {
-                // Not signed in, initiate sign in process
+                // Not signed in, initiate sign in process through popup WebView
                 puterService?.evaluateJavascript("""
                     (function() {
                         try {
-                            console.log("Attempting to sign in with Puter.js");
+                            console.log("Attempting to sign in with Puter.js via popup");
                             puter.auth.signIn().then(user => {
                                 console.log("Authentication successful", user);
                                 if (window.AndroidInterface) {
@@ -628,13 +628,13 @@ class PuterManager private constructor(private val context: Context) {
         return future
     }
     
-    fun saveTaskToKvStore(key: String, taskData: Map<String, Any?>): CompletableFuture<Boolean> {
+    fun saveTaskToKvStore(key: String, taskDataJson: String): CompletableFuture<Boolean> {
         val future = CompletableFuture<Boolean>()
         val callbackId = getNextCallbackId()
         
         // Convert the task data to JSON string
-        val taskDataJson = try {
-            org.json.JSONObject(taskData).toString()
+        val taskDataJsonStr = try {
+            org.json.JSONObject(taskDataJson).toString()
         } catch (e: Exception) {
             Log.e(TAG, "Error converting task data to JSON", e)
             "{}"
@@ -644,7 +644,7 @@ class PuterManager private constructor(private val context: Context) {
             future.complete(true)
         }
 
-        puterService?.puterSaveTaskToKvStore(key, taskDataJson) { response ->
+        puterService?.puterSaveTaskToKvStore(key, taskDataJsonStr) { response ->
             callbacks.remove(callbackId)?.invoke(response)
         }
 
