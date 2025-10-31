@@ -90,6 +90,7 @@ class PuterManager private constructor(private val context: Context) {
                     (function() {
                         try {
                             console.log("Attempting to sign in with Puter.js via popup");
+                            // Use puter.auth.signIn() which should open a popup for authentication
                             puter.auth.signIn().then(user => {
                                 console.log("Authentication successful", user);
                                 if (window.AndroidInterface) {

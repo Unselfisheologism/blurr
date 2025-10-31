@@ -26,6 +26,7 @@ class PuterWebChromeClient : WebChromeClient() {
                 allowFileAccess = true
                 allowContentAccess = true
                 databaseEnabled = true
+                domStorageEnabled = true
                 // Set a proper user agent to ensure mobile-optimized experience
                 userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.0 Mobile Safari/537.36 PuterApp"
             }
@@ -35,31 +36,31 @@ class PuterWebChromeClient : WebChromeClient() {
                     view: WebView,
                     request: WebResourceRequest
                 ): Boolean {
-                    return false // Let WebView handle all URLs
+                    // Allow all URLs to be loaded in the popup WebView
+                    return false
                 }
             }
             
             webChromeClient = object : WebChromeClient() {
                 override fun onCloseWindow(window: WebView) {
+                    // Properly close the popup dialog
                     popupDialog?.dismiss()
                     popupWebView?.destroy()
                     popupWebView = null
+                    popupDialog = null
                 }
             }
         }
         
-        // Check if popupWebView is not null before proceeding
-        if (popupWebView == null) {
-            return false
-        }
-        
         // Create dialog to display popup WebView
         popupDialog = Dialog(view.context, android.R.style.Theme_Black_NoTitleBar_Fullscreen).apply {
-            setContentView(popupWebView!!) // Safe to use !! since we checked for null above
+            setContentView(popupWebView!!)
             setCancelable(true)
             setOnCancelListener {
+                // Clean up when dialog is cancelled
                 popupWebView?.destroy()
                 popupWebView = null
+                popupDialog = null
             }
             show()
         }
@@ -73,8 +74,10 @@ class PuterWebChromeClient : WebChromeClient() {
     }
     
     override fun onCloseWindow(window: WebView) {
+        // Ensure proper cleanup when window is closed
         popupDialog?.dismiss()
         popupWebView?.destroy()
         popupWebView = null
+        popupDialog = null
     }
 }

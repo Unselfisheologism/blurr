@@ -77,7 +77,7 @@ class PuterService : Service() {
                     }
                 }
 
-                webChromeClient = PuterWebChromeClient()
+                webView.webChromeClient = PuterWebChromeClient()
             }
 
             // Load the Puter bridge HTML
@@ -85,8 +85,7 @@ class PuterService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing WebView", e)
         }
-    }
-
+    
     // Chat functionality
     fun executePuterChat(query: String, callback: (String?) -> Unit) {
         val callbackId = "chat_" + System.currentTimeMillis()
@@ -109,7 +108,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // Text to image functionality
     fun executePuterTxt2Img(prompt: String, callback: (String?) -> Unit) {
         val callbackId = "txt2img_" + System.currentTimeMillis()
@@ -132,7 +131,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // Image to text functionality
     fun executePuterImg2Txt(imageData: String, callback: (String?) -> Unit) {
         val callbackId = "img2txt_" + System.currentTimeMillis()
@@ -155,7 +154,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // Text to speech functionality
     fun executePuterTxt2Speech(text: String, callback: (String?) -> Unit) {
         val callbackId = "txt2speech_" + System.currentTimeMillis()
@@ -178,7 +177,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // KV store get functionality
     fun puterKvGet(key: String, callback: (String?) -> Unit) {
         val callbackId = "kvget_" + System.currentTimeMillis()
@@ -201,7 +200,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // KV store set functionality
     fun puterKvSet(key: String, value: String, callback: (String?) -> Unit) {
         val callbackId = "kvset_" + System.currentTimeMillis()
@@ -224,7 +223,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // KV store delete functionality
     fun puterKvDel(key: String, callback: (String?) -> Unit) {
         val callbackId = "kvdeld_" + System.currentTimeMillis()
@@ -247,7 +246,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // KV store list functionality
     fun puterKvList(pattern: String, returnValues: Boolean, callback: (String?) -> Unit) {
         val callbackId = "kvlist_" + System.currentTimeMillis()
@@ -270,7 +269,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // KV store increment functionality
     fun puterKvIncr(key: String, amount: Int, callback: (String?) -> Unit) {
         val callbackId = "kvincr_" + System.currentTimeMillis()
@@ -293,7 +292,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // KV store decrement functionality
     fun puterKvDecr(key: String, amount: Int, callback: (String?) -> Unit) {
         val callbackId = "kvdecr_" + System.currentTimeMillis()
@@ -316,7 +315,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // KV store flush functionality
     fun puterKvFlush(callback: (String?) -> Unit) {
         val callbackId = "kvflush_" + System.currentTimeMillis()
@@ -339,7 +338,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // Chat streaming functionality
     fun executePuterChatStream(query: String, onChunkCallback: (String) -> Unit, callback: (String?) -> Unit) {
         val callbackId = "chatstream_" + System.currentTimeMillis()
@@ -366,7 +365,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // File system write functionality
     fun executePuterFsWrite(path: String, data: String, optionsJson: String, callback: (String?) -> Unit) {
         val callbackId = "fswrite_" + System.currentTimeMillis()
@@ -389,7 +388,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // File system read functionality
     fun executePuterFsRead(path: String, optionsJson: String, callback: (String?) -> Unit) {
         val callbackId = "fsread_" + System.currentTimeMillis()
@@ -412,7 +411,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // File system mkdir functionality
     fun executePuterFsMkdir(path: String, optionsJson: String, callback: (String?) -> Unit) {
         val callbackId = "fsmkdir_" + System.currentTimeMillis()
@@ -435,7 +434,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // File system readdir functionality
     fun executePuterFsReaddir(path: String, callback: (String?) -> Unit) {
         val callbackId = "fsreaddir_" + System.currentTimeMillis()
@@ -458,7 +457,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // File system delete functionality
     fun executePuterFsDelete(path: String, optionsJson: String, callback: (String?) -> Unit) {
         val callbackId = "fsdelete_" + System.currentTimeMillis()
@@ -481,7 +480,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // File system move functionality
     fun executePuterFsMove(source: String, destination: String, optionsJson: String, callback: (String?) -> Unit) {
         val callbackId = "fsmove_" + System.currentTimeMillis()
@@ -504,7 +503,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // File system copy functionality
     fun executePuterFsCopy(source: String, destination: String, optionsJson: String, callback: (String?) -> Unit) {
         val callbackId = "fscopy_" + System.currentTimeMillis()
@@ -527,7 +526,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // File system rename functionality
     fun executePuterFsRename(path: String, newName: String, callback: (String?) -> Unit) {
         val callbackId = "fsrename_" + System.currentTimeMillis()
@@ -550,7 +549,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // File system stat functionality
     fun executePuterFsStat(path: String, callback: (String?) -> Unit) {
         val callbackId = "fsstat_" + System.currentTimeMillis()
@@ -573,7 +572,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // File system space functionality
     fun executePuterFsSpace(callback: (String?) -> Unit) {
         val callbackId = "fsspace_" + System.currentTimeMillis()
@@ -596,7 +595,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // Task history functionality
     fun puterGetTaskHistoryFromKvStore(callback: (String?) -> Unit) {
         val callbackId = "taskhistory_" + System.currentTimeMillis()
@@ -619,7 +618,7 @@ class PuterService : Service() {
             webView?.evaluateJavascript(jsCode, null)
         }
     }
-
+    
     // Save task to KV store functionality
     fun puterSaveTaskToKvStore(key: String, taskDataJson: String, callback: (String?) -> Unit) {
         val callbackId = "savetask_" + System.currentTimeMillis()

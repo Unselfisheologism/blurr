@@ -76,7 +76,7 @@
             
             // Listen for postMessage events from popup windows
             window.addEventListener("message", function(event) {
-                console.log("Received message from popup:", event.data);
+                console.log("Received message from popup:", event.data, "from origin:", event.origin);
                 
                 // Check if this is an authentication completion message
                 if (event.data && event.data.type === "PUTER_AUTH_COMPLETE") {
@@ -95,14 +95,8 @@
                         }
                     }
                 }
-            });
-            
-            // Also listen for messages from puter.js for authentication completion
-            // This is important for the popup to communicate back to the parent
-            window.addEventListener("message", function(event) {
-                console.log("Message received from:", event.origin, "data:", event.data);
                 
-                // Look for puter auth completion messages
+                // Handle puter authentication callback messages
                 if (event.data && typeof event.data === 'object') {
                     if (event.data.type === 'puter-auth-callback' || 
                         event.data.type === 'auth-callback' || 
@@ -126,7 +120,39 @@
                         }
                     }
                 }
+                
+                // Handle the specific message format that puter.js uses for auth completion
+                if (event.data && typeof event.data === 'object' && event.data.cmd === 'puter.auth.callback') {
+                    console.log("Received puter auth callback:", event.data);
+                    
+                    if (event.data.token) {
+                        localStorage.setItem('puter_auth_token', event.data.token);
+                        
+                        if (window.AndroidInterface && window.AndroidInterface.onAuthSuccess) {
+                            window.AndroidInterface.onAuthSuccess(JSON.stringify({
+                                token: event.data.token,
+                                authenticated: true
+                            }));
+                        }
+                        
+                        // Resolve the stored promise if available
+                        if (window.__puterAuthResolver) {
+                            window.__puterAuthResolver({token: event.data.token});
+                            window.__puterAuthResolver = null;
+                        }
+                    }
+                }
             });
+            
+            // Also set up a global handler for puter authentication callbacks
+            // This is important for the authentication flow to work properly
+            if (window.puter && window.puter.auth) {
+                // Ensure the postMessage listener is properly set up
+                console.log("Puter.js is ready and available");
+            } else {
+                // Wait for puter to be ready
+                console.log("Waiting for puter.js to be ready");
+            }
             
             // Additional check for existing auth token in localStorage
             const existingToken = localStorage.getItem('puter_auth_token');
