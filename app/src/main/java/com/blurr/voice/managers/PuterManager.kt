@@ -10,6 +10,7 @@ import android.util.Log
 import android.webkit.*
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.content.ContextCompat
+import com.blurr.voice.R
 import com.blurr.voice.services.PuterService
 import com.blurr.voice.data.TaskHistoryItem
 import java.util.concurrent.CompletableFuture
