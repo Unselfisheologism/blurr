@@ -5,6 +5,7 @@ import android.os.IBinder
 import android.util.Log
 import com.blurr.voice.R
 import com.blurr.voice.services.PuterService
+import com.blurr.voice.services.PuterBackgroundService
 import com.blurr.voice.data.TaskHistoryItem
 import java.util.concurrent.CompletableFuture
 
@@ -53,6 +54,9 @@ class PuterManager private constructor(private val context: Context) {
             context.unbindService(connection)
             isBound = false
         }
+        // Stop the background service when shutting down
+        val backgroundServiceIntent = Intent(context, PuterBackgroundService::class.java)
+        context.stopService(backgroundServiceIntent)
     }
     
     val isServiceBound: Boolean
@@ -133,6 +137,10 @@ class PuterManager private constructor(private val context: Context) {
             // We could potentially notify the service to clear the session
             // puterService?.clearAuthToken()
         }
+        
+        // Stop the background service when signing out
+        val backgroundServiceIntent = Intent(context, PuterBackgroundService::class.java)
+        context.stopService(backgroundServiceIntent)
     }
 
     // Chat functionality

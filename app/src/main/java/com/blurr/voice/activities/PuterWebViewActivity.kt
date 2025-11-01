@@ -18,6 +18,7 @@ import com.blurr.voice.managers.PuterManager
 import com.blurr.voice.utilities.OnboardingManager
 import com.blurr.voice.MainActivity
 import com.blurr.voice.OnboardingPermissionsActivity
+import com.blurr.voice.services.PuterBackgroundService
 import org.json.JSONObject
 
 class PuterWebViewActivity : AppCompatActivity() {
@@ -149,6 +150,10 @@ class PuterWebViewActivity : AppCompatActivity() {
                     if (token.isNotEmpty()) {
                         puterManager.initializeWithToken(token)
                         Log.d(TAG, "Token stored successfully")
+                        
+                        // Start the background service to maintain Puter.js communication
+                        val backgroundServiceIntent = Intent(this@PuterWebViewActivity, PuterBackgroundService::class.java)
+                        this@PuterWebViewActivity.startService(backgroundServiceIntent)
                     } else {
                         Log.w(TAG, "No token found in user JSON")
                     }

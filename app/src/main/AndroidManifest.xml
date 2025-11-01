@@ -158,6 +158,12 @@
             android:name=".services.PuterService"
             android:enabled="true"
             android:exported="false"
+        <service
+            android:name=".services.PuterBackgroundService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse" />
+
             android:foregroundServiceType="specialUse" />
 
         <!-- Your Widget Provider -->
