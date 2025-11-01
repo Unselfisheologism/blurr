@@ -28,6 +28,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.blurr.voice.utilities.OnboardingManager
+import com.blurr.voice.managers.PuterManager
 
 class OnboardingPermissionsActivity : AppCompatActivity() {
 
@@ -375,10 +376,20 @@ class OnboardingPermissionsActivity : AppCompatActivity() {
         val onboardingManager = OnboardingManager(this)
         onboardingManager.setOnboardingCompleted(true)
 
-        val intent = Intent(this, MainActivity::class.java)
-        startActivity(intent)
+        // Check if user is signed in with Puter before navigating to MainActivity
+        val puterManager = PuterManager.getInstance(this)
+        if (puterManager.isUserSignedIn()) {
+            // User is authenticated, go to main activity
+            val intent = Intent(this, MainActivity::class.java)
+            startActivity(intent)
+        } else {
+            // User is not authenticated with Puter, redirect to login activity
+            val intent = Intent(this, LoginActivity::class.java)
+            startActivity(intent)
+        }
         finish() // End the onboarding flow
     }
+    
 }
 
 // Data class to represent each step

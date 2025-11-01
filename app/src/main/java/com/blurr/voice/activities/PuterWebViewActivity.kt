@@ -132,6 +132,63 @@ class PuterWebViewActivity : AppCompatActivity() {
     
     // This function is called when the done button is clicked - always available
     private fun onDoneClicked() {
+        // Check if user is signed in before navigating away
+        val isSignedIn = puterManager.isUserSignedIn()
+        Log.d(TAG, "User signed in status: $isSignedIn")
+        
+        if (!isSignedIn) {
+            // User is not signed in, show an error message and stay on the page
+            Toast.makeText(this, "Please sign in with Puter first", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        // Start the background service to maintain Puter.js communication
+        val backgroundServiceIntent = Intent(this, PuterBackgroundService::class.java)
+        startService(backgroundServiceIntent)
+        
+        // Navigate back to the appropriate main app activity based on onboarding status
+        val intent = if (OnboardingManager(this).isOnboardingCompleted()) {
+            Intent(this, MainActivity::class.java)
+        } else {
+    override fun onBackPressed() {
+        if (webView.visibility == View.VISIBLE && webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            // Check if user is signed in before navigating away
+            val isSignedIn = puterManager.isUserSignedIn()
+            Log.d(TAG, "Back pressed - User signed in status: $isSignedIn")
+            
+            if (!isSignedIn) {
+                // User is not signed in, show an error message and stay on the page
+                Toast.makeText(this, "Please sign in with Puter first", Toast.LENGTH_SHORT).show()
+                return
+            }
+            
+            // Navigate to the appropriate main app activity based on onboarding status
+            val intent = if (OnboardingManager(this).isOnboardingCompleted()) {
+                Intent(this, MainActivity::class.java)
+            } else {
+                Intent(this, OnboardingPermissionsActivity::class.java)
+            }
+            
+            // Clear the activity stack to prevent back navigation to the WebView
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+            
+            startActivity(intent)
+            finish() // Close the PuterWebViewActivity
+        }
+    }
+            Intent(this, OnboardingPermissionsActivity::class.java)
+        }
+        
+        // Clear the activity stack to prevent back navigation to the WebView
+        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+        
+        startActivity(intent)
+        finish() // Close the PuterWebViewActivity
+    }
+    // This function is called when the done button is clicked - always available
+    private fun onDoneClicked() {
         // Start the background service to maintain Puter.js communication
         val backgroundServiceIntent = Intent(this, PuterBackgroundService::class.java)
         startService(backgroundServiceIntent)

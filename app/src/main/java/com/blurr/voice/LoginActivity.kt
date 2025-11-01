@@ -73,6 +73,23 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun startPostAuthFlow() {
+        // Check if user is actually signed in before proceeding
+        if (!puterManager.isUserSignedIn()) {
+            Log.w(TAG, "startPostAuthFlow called but user is not signed in")
+            // Show an error message and return to login
+            Toast.makeText(this, "Authentication failed. Please try again.", Toast.LENGTH_SHORT).show()
+            return
+        }
+        
+        val onboardingManager = OnboardingManager(this)
+        if (onboardingManager.isOnboardingCompleted()) {
+            startActivity(Intent(this@LoginActivity, MainActivity::class.java))
+        } else {
+            startActivity(Intent(this@LoginActivity, OnboardingPermissionsActivity::class.java))
+        }
+        finish()
+    }
+    private fun startPostAuthFlow() {
         // For now, just navigate to main activity
         // In the future, we can get user info and save profile
         val onboardingManager = OnboardingManager(this)
