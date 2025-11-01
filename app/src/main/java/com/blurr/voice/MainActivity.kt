@@ -341,6 +341,12 @@ class MainActivity : BaseNavigationActivity() {
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onResume() {
         super.onResume()
+        // Check authentication state when activity resumes
+        if (!puterManager.isUserSignedIn()) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
         showLoading(true)
         displayDeveloperMessage()
         updateDeltaVisuals(pandaStateManager.getCurrentState())

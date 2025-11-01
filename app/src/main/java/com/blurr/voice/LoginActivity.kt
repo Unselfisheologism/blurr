@@ -27,16 +27,30 @@ class LoginActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize PuterManager first
+        puterManager = PuterManager.getInstance(this)
+        puterManager.initialize()
+        
+        // Check if user is already authenticated
+        if (puterManager.isUserSignedIn()) {
+            // User is already signed in, navigate to appropriate screen based on onboarding status
+            val onboardingManager = OnboardingManager(this)
+            if (onboardingManager.isOnboardingCompleted()) {
+                startActivity(Intent(this, MainActivity::class.java))
+            } else {
+                startActivity(Intent(this, OnboardingPermissionsActivity::class.java))
+            }
+            finish()
+            return
+        }
+        
         setContentView(R.layout.activity_onboarding)
 
         // Find the new Puter sign-in button
         puterSignInButton = findViewById(R.id.puterSignInButton)
         progressBar = findViewById(R.id.progressBar)
         loadingText = findViewById(R.id.loadingText)
-        puterManager = PuterManager.getInstance(this)
-
-        // Initialize the PuterManager to bind the service
-        puterManager.initialize()
 
         // Set click listener for the Puter sign-in button
         puterSignInButton.setOnClickListener {
