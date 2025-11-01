@@ -4,15 +4,14 @@
     android:layout_height="match_parent"
     android:orientation="vertical">
 
-    <!-- Header with Done button -->
+    <!-- Header with Done button - always visible -->
     <LinearLayout
         android:id="@+id/header_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="16dp"
-        android:background="#f0f0f0"
-        android:visibility="gone">
+        android:background="#f0f0f0">
 
         <TextView
             android:layout_width="0dp"

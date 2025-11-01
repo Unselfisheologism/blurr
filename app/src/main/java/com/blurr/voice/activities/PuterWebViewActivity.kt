@@ -49,9 +49,8 @@ class PuterWebViewActivity : AppCompatActivity() {
 
         setupWebView()
         
-        // Initially show the login button and hide the WebView and header
+        // Initially show the login button and hide the WebView
         webView.visibility = View.GONE
-        headerLayout.visibility = View.GONE
         loginButton.visibility = View.VISIBLE
         
         // Set click listener for the login button
@@ -59,7 +58,7 @@ class PuterWebViewActivity : AppCompatActivity() {
             onLoginClicked()
         }
         
-        // Set click listener for the done button
+        // Set click listener for the done button - always available
         doneButton.setOnClickListener {
             onDoneClicked()
         }
@@ -131,9 +130,9 @@ class PuterWebViewActivity : AppCompatActivity() {
         loadPuterWebsite()
     }
     
-    // This function is called when the done button is clicked
+    // This function is called when the done button is clicked - always available
     private fun onDoneClicked() {
-        // Start the background service to maintain Puter.js communication if not already started
+        // Start the background service to maintain Puter.js communication
         val backgroundServiceIntent = Intent(this, PuterBackgroundService::class.java)
         startService(backgroundServiceIntent)
         
@@ -182,12 +181,6 @@ class PuterWebViewActivity : AppCompatActivity() {
                     Log.e(TAG, "Error parsing user JSON", e)
                     // If we can't parse the JSON, continue anyway
                 }
-                
-                // Show the header with the done button after authentication
-                headerLayout.visibility = View.VISIBLE
-                
-                // Update status to inform user about the done button
-                // In the web UI, the message will be updated via the web interface
             }
         }
 
