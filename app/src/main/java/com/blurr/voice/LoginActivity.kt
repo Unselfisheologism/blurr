@@ -49,6 +49,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun signInWithPuter() {
+        Log.d(TAG, "Sign in with Puter button clicked")
         progressBar.visibility = View.VISIBLE
         loadingText.visibility = View.VISIBLE
         puterSignInButton.isEnabled = false
@@ -61,12 +62,13 @@ class LoginActivity : AppCompatActivity() {
                 progressBar.visibility = View.GONE
                 loadingText.visibility = View.GONE
                 if (success == true) {
+                    Log.d(TAG, "Authentication successful")
                     Toast.makeText(this, "Authentication successful!", Toast.LENGTH_SHORT).show()
                     startPostAuthFlow()
                 } else {
                     puterSignInButton.isEnabled = true
-                    Toast.makeText(this, "Authentication failed", Toast.LENGTH_SHORT).show()
-                    Log.e(TAG, "Sign in failed", error) 
+                    Log.e(TAG, "Authentication failed", error) 
+                    Toast.makeText(this, "Authentication failed: ${error?.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }

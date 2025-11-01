@@ -1,62 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:layout_height="match_parent">
 
-    <TextView
-        android:layout_width="match_parent"
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Puter.js Demo"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:gravity="center"
-        android:layout_marginBottom="24dp" />
+        android:layout_centerInParent="true"
+        android:visibility="gone" />
 
-    <Button
-        android:id="@+id/chat_button"
+    <WebView
+        android:id="@+id/puterWebView"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Execute Chat"
-        android:layout_marginBottom="16dp" />
+        android:layout_height="match_parent" />
 
-    <Button
-        android:id="@+id/sign_in_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Sign In"
-        android:layout_marginBottom="16dp" />
-
-    <Button
-        android:id="@+id/kv_get_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="KV Get"
-        android:layout_marginBottom="16dp" />
-
-    <Button
-        android:id="@+id/kv_set_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="KV Set"
-        android:layout_marginBottom="24dp" />
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <TextView
-            android:id="@+id/result_text"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Results will appear here"
-            android:textSize="16sp"
-            android:padding="16dp"
-            android:background="@drawable/rounded_background"
-            android:backgroundTint="#F0F0F0" />
-
-    </ScrollView>
-
-</LinearLayout>
+</RelativeLayout>
