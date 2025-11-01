@@ -10,6 +10,7 @@ import android.webkit.*
 import android.webkit.JavascriptInterface
 import android.widget.Button
 import android.widget.ProgressBar
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.blurr.voice.R
 import com.blurr.voice.PuterWebChromeClient
@@ -90,6 +91,7 @@ class PuterWebViewActivity : AppCompatActivity() {
                 super.onReceivedError(view, request, error)
                 progressBar.visibility = View.GONE
                 Log.e(TAG, "WebView error: ${error?.description}")
+                Toast.makeText(this@PuterWebViewActivity, "Error loading web app: ${error?.description}", Toast.LENGTH_LONG).show()
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
@@ -137,8 +139,8 @@ class PuterWebViewActivity : AppCompatActivity() {
             Log.d(TAG, "Authentication successful: $userJson")
             // Handle successful authentication
             runOnUiThread {
-                // Update UI or store user information
-                // You can broadcast the success to other parts of the app
+                // Show success message
+                Toast.makeText(this@PuterWebViewActivity, "Authentication successful!", Toast.LENGTH_SHORT).show()
                 
                 // Extract token from user JSON if available and store it
                 try {
@@ -146,6 +148,9 @@ class PuterWebViewActivity : AppCompatActivity() {
                     val token = userObject.optString("token", "")
                     if (token.isNotEmpty()) {
                         puterManager.initializeWithToken(token)
+                        Log.d(TAG, "Token stored successfully")
+                    } else {
+                        Log.w(TAG, "No token found in user JSON")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error parsing user JSON", e)
@@ -168,7 +173,10 @@ class PuterWebViewActivity : AppCompatActivity() {
             Log.e(TAG, "Authentication error: $error")
             // Handle authentication error
             runOnUiThread {
-                // Update UI to show error
+                Toast.makeText(this@PuterWebViewActivity, "Authentication failed: $error", Toast.LENGTH_LONG).show()
+                // Show the login button again so user can try again
+                loginButton.visibility = View.VISIBLE
+                webView.visibility = View.GONE
             }
         }
 
@@ -177,7 +185,7 @@ class PuterWebViewActivity : AppCompatActivity() {
             Log.d(TAG, "$operation successful: $result")
             // Handle successful Puter operation
             runOnUiThread {
-                // Update UI based on the operation result
+                Toast.makeText(this@PuterWebViewActivity, "$operation successful!", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -186,7 +194,7 @@ class PuterWebViewActivity : AppCompatActivity() {
             Log.e(TAG, "$operation error: $error")
             // Handle Puter operation error
             runOnUiThread {
-                // Update UI to show error
+                Toast.makeText(this@PuterWebViewActivity, "Error in $operation: $error", Toast.LENGTH_LONG).show()
             }
         }
 
@@ -195,7 +203,14 @@ class PuterWebViewActivity : AppCompatActivity() {
             Log.d(TAG, "Generic response: $responseJson")
             // Handle generic response
             runOnUiThread {
-                // Process the response as needed
+                try {
+                    val responseObject = JSONObject(responseJson)
+                    val type = responseObject.optString("type", "unknown")
+                    val data = responseObject.optString("data", "")
+                    Log.d(TAG, "Processed $type response: $data")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error processing response JSON", e)
+                }
             }
         }
     }
