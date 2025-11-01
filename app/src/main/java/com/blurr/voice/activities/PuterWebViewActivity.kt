@@ -136,15 +136,36 @@ class PuterWebViewActivity : AppCompatActivity() {
         val backgroundServiceIntent = Intent(this, PuterBackgroundService::class.java)
         startService(backgroundServiceIntent)
         
-        // Minimize the activity to background
-        moveTaskToBack(true)
+        // Navigate back to the appropriate main app activity based on onboarding status
+        val intent = if (OnboardingManager(this).isOnboardingCompleted()) {
+            Intent(this, MainActivity::class.java)
+        } else {
+            Intent(this, OnboardingPermissionsActivity::class.java)
+        }
+        
+        // Clear the activity stack to prevent back navigation to the WebView
+        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+        
+        startActivity(intent)
+        finish() // Close the PuterWebViewActivity
     }
 
     override fun onBackPressed() {
         if (webView.visibility == View.VISIBLE && webView.canGoBack()) {
             webView.goBack()
         } else {
-            super.onBackPressed()
+            // Navigate to the appropriate main app activity based on onboarding status
+            val intent = if (OnboardingManager(this).isOnboardingCompleted()) {
+                Intent(this, MainActivity::class.java)
+            } else {
+                Intent(this, OnboardingPermissionsActivity::class.java)
+            }
+            
+            // Clear the activity stack to prevent back navigation to the WebView
+            intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+            
+            startActivity(intent)
+            finish() // Close the PuterWebViewActivity
         }
     }
 
