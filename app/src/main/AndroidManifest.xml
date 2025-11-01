@@ -52,6 +52,8 @@
             android:screenOrientation="portrait"  
             android:launchMode="singleTop">  
             <!-- Removed the intent filter for auth callback since we're using popup WebView -->
+        </activity>
+        
         <activity
             android:name=".activities.PuterAuthCallbackActivity"
             android:exported="true"
@@ -63,7 +65,7 @@
                 <data android:scheme="blurrputer" />
             </intent-filter>
         </activity>
-        </activity>
+
         <activity android:name=".ChatActivity" android:exported="true" android:label="@string/app_name" android:theme="@style/Theme.Blurr" android:screenOrientation="portrait" />
         <activity android:name=".DialogueActivity" android:exported="false" android:label="@string/app_name" android:theme="@style/Theme.Blurr" android:windowSoftInputMode="adjustResize" android:screenOrientation="portrait" />
         <activity android:name=".SettingsActivity" android:exported="false" android:label="@string/settings" android:theme="@style/Theme.Blurr" android:screenOrientation="portrait" />
