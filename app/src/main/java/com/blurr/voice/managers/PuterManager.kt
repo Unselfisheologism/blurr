@@ -11,6 +11,7 @@ import java.util.concurrent.CompletableFuture
 class PuterManager private constructor(private val context: Context) {
     private var puterService: PuterService? = null
     private var isBound = false
+    private var signInCallback: ((Boolean) -> Unit)? = null  // Callback for authentication results from broadcast receiver
     private val callbacks = mutableMapOf<String, (String?) -> Unit>()
     private var callbackCounter = 0
     private val TAG = "PuterManager"
@@ -123,10 +124,10 @@ class PuterManager private constructor(private val context: Context) {
     fun signIn(): CompletableFuture<Boolean> {
         val future = CompletableFuture<Boolean>()
         
-        // Set the callback in the service to be called when authentication completes
-        puterService?.signInCallback = { success ->
+        // Set the callback in the PuterManager to be called when authentication completes via broadcast
+        this.signInCallback = { success ->
             future.complete(success)
-            puterService?.signInCallback = null
+            this.signInCallback = null
         }
 
         // First check if already signed in
@@ -135,7 +136,7 @@ class PuterManager private constructor(private val context: Context) {
                 // Already signed in
                 Log.d(TAG, "User is already signed in")
                 future.complete(true)
-                puterService?.signInCallback = null
+                this.signInCallback = null
             } else {
                 Log.d(TAG, "User is not signed in, initiating sign in process")
                 // Not signed in, initiate sign in process through popup WebView
