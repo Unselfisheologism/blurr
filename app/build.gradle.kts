@@ -51,6 +51,15 @@ android {
 
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("app/keystore.jks")
+            storePassword = System.getenv("SIGNING_PASSWORD") ?: ""
+            keyAlias = System.getenv("KEY_ALIAS") ?: ""
+            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -58,8 +67,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Use debug signing for release build in CI/CD to avoid keystore issues
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             // Debug-specific field only

@@ -56,8 +56,14 @@ jobs:
 
       # Generate Release APK
       - name: Generate Release APK
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          ./gradlew clean assembleRelease --warning-mode=all --stacktrace
+          echo $SIGNING_KEY | base64 -d > release-keystore.jks
+          ./gradlew clean assembleRelease --warning-mode=all --stacktrace -Pandroid.signingConfig.storeFile=release-keystore.jks -Pandroid.signingConfig.storePassword=$SIGNING_PASSWORD -Pandroid.signingConfig.keyAlias=$KEY_ALIAS -Pandroid.signingConfig.keyPassword=$KEY_PASSWORD
 
       # Upload Release APK
       - name: Upload Release APK (artifact)
