@@ -11,7 +11,6 @@ import java.util.concurrent.CompletableFuture
 class PuterManager private constructor(private val context: Context) {
     private var puterService: PuterService? = null
     private var isBound = false
-    private var signInCallback: ((Boolean) -> Unit)? = null  // Callback for authentication results from broadcast receiver
     private val callbacks = mutableMapOf<String, (String?) -> Unit>()
     private var callbackCounter = 0
     private val TAG = "PuterManager"
@@ -42,55 +41,9 @@ class PuterManager private constructor(private val context: Context) {
         }
     }
 
-    private val authBroadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.action) {
-                "com.blurr.voice.PUTER_AUTH_SUCCESS" -> {
-                    val token = intent.getStringExtra("token")
-                    Log.d(TAG, "Received auth success broadcast with token: $token")
-                    if (!token.isNullOrEmpty()) {
-                        // Store the token for future use
-                        val editor = context?.getSharedPreferences("auth", Context.MODE_PRIVATE)?.edit()
-                        editor?.putString("puter_token", token)
-                        editor?.apply()
-
-                        // Inject token into the WebView's JavaScript context if service is bound
-                        if (isBound && puterService != null) {
-                            puterService?.evaluateJavascript("""
-                                (function() {
-                                    if (window.handleAuthCompletion) {
-                                        window.handleAuthCompletion('$token');
-                                    } else {
-                                        console.error('handleAuthCompletion function not found');
-                                    }
-                                })();
-                            """.trimIndent(), null)
-                        } else {
-                            Log.w(TAG, "PuterService not bound, token stored but not injected to WebView")
-                        }
-
-                        // Complete any pending sign-in operations
-                        signInCallback?.invoke(true)
-                        signInCallback = null
-                    }
-                }
-                "com.blurr.voice.PUTER_AUTH_FAILED" -> {
-                    Log.d(TAG, "Received auth failed broadcast")
-                    signInCallback?.invoke(false)
-                    signInCallback = null
-                }
-            }
-        }
-    }
+    
 
     fun initialize() {
-        // Register the broadcast receiver for authentication events
-        val filter = IntentFilter().apply {
-            addAction("com.blurr.voice.PUTER_AUTH_SUCCESS")
-            addAction("com.blurr.voice.PUTER_AUTH_FAILED")
-        }
-        context.registerReceiver(authBroadcastReceiver, filter)
-        
         val intent = Intent(context, PuterService::class.java)
         context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
         context.startService(intent)
@@ -100,12 +53,6 @@ class PuterManager private constructor(private val context: Context) {
         if (isBound) {
             context.unbindService(connection)
             isBound = false
-        }
-        try {
-            context.unregisterReceiver(authBroadcastReceiver)
-        } catch (e: IllegalArgumentException) {
-            // Receiver was not registered, which is fine
-            Log.d(TAG, "Broadcast receiver was not registered or already unregistered")
         }
     }
     
@@ -124,10 +71,10 @@ class PuterManager private constructor(private val context: Context) {
     fun signIn(): CompletableFuture<Boolean> {
         val future = CompletableFuture<Boolean>()
         
-        // Set the callback in the PuterManager to be called when authentication completes via broadcast
-        this.signInCallback = { success ->
+        // Set the callback in the service to be called when authentication completes
+        puterService?.signInCallback = { success ->
             future.complete(success)
-            this.signInCallback = null
+            puterService?.signInCallback = null
         }
 
         // First check if already signed in
@@ -136,7 +83,7 @@ class PuterManager private constructor(private val context: Context) {
                 // Already signed in
                 Log.d(TAG, "User is already signed in")
                 future.complete(true)
-                this.signInCallback = null
+                puterService?.signInCallback = null
             } else {
                 Log.d(TAG, "User is not signed in, initiating sign in process")
                 // Not signed in, initiate sign in process through popup WebView

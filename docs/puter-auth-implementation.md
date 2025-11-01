@@ -2,16 +2,16 @@
 
 ## Overview
 
-This document explains how Puter.js authentication is implemented in the Blurr Android app using Chrome Custom Tabs for the OAuth flow and a persistent WebView for API calls.
+This document explains how Puter.js authentication is implemented in the Blurr Android app using a single WebView with popup support for the OAuth flow and persistent API communication.
 
 ## Architecture
 
-The implementation uses a hybrid approach combining native Android components with web technologies:
+The implementation uses a single WebView approach combining native Android components with web technologies:
 
 1. **Persistent WebView Service**: A background service hosts a WebView that runs Puter.js continuously
-2. **Chrome Custom Tabs**: Authentication flows are handled through Chrome Custom Tabs instead of internal WebViews
-3. **Deep Link Callback**: After authentication, users are redirected back to the app via a deep link
-4. **Broadcast Communication**: Authentication results are communicated between components using Android broadcasts
+2. **Popup Windows**: Authentication flows are handled through popup windows created by the WebView
+3. **JavaScript Bridge**: Communication between the WebView and native Android code
+4. **PostMessage API**: Used for communication between the main WebView and authentication popup
 
 ## Components
 
@@ -19,71 +19,53 @@ The implementation uses a hybrid approach combining native Android components wi
 
 - Runs as a background service to maintain the persistent WebView
 - Hosts the Puter.js environment for API calls
-- Intercepts authentication URLs and redirects them to Chrome Custom Tabs
+- Handles authentication callbacks through signInCallback property
 - Evaluates JavaScript functions to interact with Puter.js
 
 ### 2. PuterWebChromeClient
 
-- Handles WebView window creation events
-- Manages the communication bridge between web and native
+- Handles WebView window creation events (onCreateWindow)
+- Manages popup windows for authentication
+- Creates dialogs to display popup WebViews
+- Properly cleans up popup resources
 
-### 3. PuterAuthCallbackActivity
-
-- Receives the authentication callback via deep link
-- Extracts the authentication token from the redirect URL
-- Stores the token and sends a broadcast to notify the service
-
-### 4. PuterManager
+### 3. PuterManager
 
 - Singleton manager to coordinate Puter.js operations
 - Handles authentication state and token management
-- Registers broadcast receivers for authentication events
+- Provides high-level API for authentication
 
 ## Authentication Flow
 
 1. User initiates sign-in through the app
-2. PuterService detects authentication URL and launches Chrome Custom Tab
-3. User completes authentication in the secure browser environment
-4. Puter.com redirects to the app's deep link (blurrputer://auth-callback)
-5. PuterAuthCallbackActivity receives the redirect and extracts the token
-6. A broadcast is sent to notify the PuterService of authentication success
-7. The token is stored and injected into the persistent WebView
-8. The authentication promise is resolved in JavaScript
+2. PuterManager calls puter.auth.signIn() via JavaScript evaluation
+3. Puter.js opens a popup window for authentication (handled by PuterWebChromeClient)
+4. User completes authentication in the popup window
+5. Popup sends authentication token back to main WebView via postMessage
+6. The PuterService receives the token and completes the authentication
+7. The authentication promise is resolved in the PuterManager
 
 ## Key Features
 
-### Chrome Custom Tabs Integration
-- Provides a secure, full-browser experience for authentication
-- Prevents the "stuck" issue that occurs with popup WebViews
-- Maintains user trust by using the system browser
+### Popup Window Support
+- WebView configured with setSupportMultipleWindows(true)
+- JavaScript can open windows automatically (javaScriptCanOpenWindowsAutomatically = true)
+- PuterWebChromeClient handles popup creation and display in dialogs
 
 ### Persistent State
 - The main WebView remains active for continuous API access
 - Authentication state is maintained across app sessions
-- Token is stored in SharedPreferences for persistence
+- Token is stored in localStorage and SharedPreferences
 
 ### Communication Bridge
 - JavaScript-to-native communication via addJavascriptInterface
 - Native-to-JavaScript communication via evaluateJavascript
-- Broadcast-based authentication result handling
-
-## Deep Link Configuration
-
-The app registers the `blurrputer://` scheme in AndroidManifest.xml to receive authentication callbacks:
-
-```xml
-<intent-filter android:autoVerify="true">
-    <action android:name="android.intent.action.VIEW" />
-    <category android:name="android.intent.category.DEFAULT" />
-    <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="blurrputer" />
-</intent-filter>
-```
+- PostMessage API for popup communication
 
 ## Security Considerations
 
-- Authentication is performed in Chrome Custom Tabs for security
-- Tokens are stored securely in SharedPreferences
+- Authentication is performed in popup WebViews with proper security settings
+- Tokens are stored securely in both WebView localStorage and app SharedPreferences
 - The WebView is properly configured with security settings
 - Communication between components is validated
 
@@ -96,7 +78,6 @@ The app registers the `blurrputer://` scheme in AndroidManifest.xml to receive a
 
 ## Dependencies
 
-- `androidx.browser:browser:1.8.0` - For Chrome Custom Tabs support
 - Puter.js v2 loaded from https://js.puter.com/v2/
 
 ## Testing Considerations

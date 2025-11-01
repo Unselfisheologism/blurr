@@ -108,10 +108,7 @@ dependencies {
     // https://mvnrepository.com/artifact/androidx.test.uiautomator/uiautomator
     implementation("androidx.test.uiautomator:uiautomator:2.3.0")
 
-    // Add Browser dependency for Chrome Custom Tabs
-    implementation("androidx.browser:browser:1.8.0")
-    // Add Browser dependency for Chrome Custom Tabs
-    implementation("androidx.browser:browser:1.8.0")
+    // Remove Browser dependency for CustomTabsIntent since we're using popup WebView
     // implementation("androidx.browser:browser:1.8.0")
     
     
