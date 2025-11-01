@@ -23,7 +23,7 @@ class PuterWebViewActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_puter_demo)
+        setContentView(R.layout.activity_puter_webview)
 
         webView = findViewById(R.id.puterWebView)
         progressBar = findViewById(R.id.progressBar)
