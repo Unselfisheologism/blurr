@@ -11,6 +11,7 @@ import android.webkit.JavascriptInterface
 import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.Toast
+import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import com.blurr.voice.R
 import com.blurr.voice.PuterWebChromeClient
@@ -25,6 +26,8 @@ class PuterWebViewActivity : AppCompatActivity() {
     private lateinit var webView: WebView
     private lateinit var progressBar: ProgressBar
     private lateinit var loginButton: Button
+    private lateinit var doneButton: Button
+    private lateinit var headerLayout: LinearLayout
     private lateinit var puterManager: PuterManager
 
     companion object {
@@ -39,18 +42,26 @@ class PuterWebViewActivity : AppCompatActivity() {
         webView = findViewById(R.id.puterWebView)
         progressBar = findViewById(R.id.progressBar)
         loginButton = findViewById(R.id.login_button)
+        doneButton = findViewById(R.id.done_button)
+        headerLayout = findViewById(R.id.header_layout)
 
         puterManager = PuterManager.getInstance(this)
 
         setupWebView()
         
-        // Initially show the login button and hide the WebView
+        // Initially show the login button and hide the WebView and header
         webView.visibility = View.GONE
+        headerLayout.visibility = View.GONE
         loginButton.visibility = View.VISIBLE
         
         // Set click listener for the login button
         loginButton.setOnClickListener {
             onLoginClicked()
+        }
+        
+        // Set click listener for the done button
+        doneButton.setOnClickListener {
+            onDoneClicked()
         }
     }
 
@@ -66,7 +77,7 @@ class PuterWebViewActivity : AppCompatActivity() {
             allowContentAccess = true
             databaseEnabled = true
             cacheMode = WebSettings.LOAD_DEFAULT
-            userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.0.0 Mobile Safari/537.36 PuterApp"
+            userAgentString = "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.0 Mobile Safari/537.36 PuterApp"
         }
 
         webView.webViewClient = object : WebViewClient() {
@@ -119,6 +130,16 @@ class PuterWebViewActivity : AppCompatActivity() {
         loginButton.visibility = View.GONE
         loadPuterWebsite()
     }
+    
+    // This function is called when the done button is clicked
+    private fun onDoneClicked() {
+        // Start the background service to maintain Puter.js communication if not already started
+        val backgroundServiceIntent = Intent(this, PuterBackgroundService::class.java)
+        startService(backgroundServiceIntent)
+        
+        // Minimize the activity to background
+        moveTaskToBack(true)
+    }
 
     override fun onBackPressed() {
         if (webView.visibility == View.VISIBLE && webView.canGoBack()) {
@@ -162,14 +183,11 @@ class PuterWebViewActivity : AppCompatActivity() {
                     // If we can't parse the JSON, continue anyway
                 }
                 
-                // Navigate to the main app flow after successful authentication
-                val intent = if (OnboardingManager(this@PuterWebViewActivity).isOnboardingCompleted()) {
-                    Intent(this@PuterWebViewActivity, MainActivity::class.java)
-                } else {
-                    Intent(this@PuterWebViewActivity, OnboardingPermissionsActivity::class.java)
-                }
-                startActivity(intent)
-                finish() // Close the PuterWebViewActivity
+                // Show the header with the done button after authentication
+                headerLayout.visibility = View.VISIBLE
+                
+                // Update status to inform user about the done button
+                // In the web UI, the message will be updated via the web interface
             }
         }
 
