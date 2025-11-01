@@ -1,5 +1,6 @@
 package com.blurr.voice.services
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -51,7 +52,7 @@ class PuterBackgroundService : Service() {
         notificationManager.createNotificationChannel(channel)
     }
 
-    private fun createNotification(): androidx.core.app.NotificationCompat {
+    private fun createNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Puter Connection Active")
             .setContentText("Maintaining connection to Puter.js SDK")
