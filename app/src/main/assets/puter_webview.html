@@ -24,7 +24,7 @@
                     originalSignIn.call(puter.auth, options);
                     
                     // We don't return anything here - the resolver will be called later
-                    // when authentication completes via the popup window
+                    // when authentication completes via the popup window or redirect
                 } catch (error) {
                     console.error("Error in signIn override:", error);
                     reject(error);
@@ -429,6 +429,48 @@
             }
         }
         
+        // Function to handle authentication completion from native side
+        window.handleAuthCompletion = function(token) {
+            console.log("Handling authentication completion with token:", token);
+            
+            // Store the token in localStorage for future use
+            if (token) {
+                localStorage.setItem('puter_auth_token', token);
+                
+                // Set the auth token in the puter instance
+                puter.setAuthToken(token);
+                
+                // Call the Android interface to notify of successful authentication
+                if (window.AndroidInterface) {
+                    window.AndroidInterface.onAuthSuccess(JSON.stringify({
+                        token: token,
+                        authenticated: true
+                    }));
+                }
+                
+                // Also resolve the stored promise if available
+                if (window.__puterAuthResolver) {
+                    window.__puterAuthResolver({token: token, authenticated: true});
+                    window.__puterAuthResolver = null;
+                }
+                
+                console.log("Authentication completed successfully");
+            } else {
+                console.error("No token provided for authentication completion");
+                
+                // Call the Android interface to notify of authentication failure
+                if (window.AndroidInterface) {
+                    window.AndroidInterface.onAuthError("No token provided");
+                }
+                
+                // Reject the stored promise if available
+                if (window.__puterAuthResolver) {
+                    window.__puterAuthResolver(null);
+                    window.__puterAuthResolver = null;
+                }
+            }
+        };
+
         // Ready indicator
         window.puterServiceReady = true;
         

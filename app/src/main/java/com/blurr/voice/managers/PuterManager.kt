@@ -1,9 +1,6 @@
 package com.blurr.voice.managers
 
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
+import android.content.*
 import android.os.IBinder
 import android.util.Log
 import com.blurr.voice.R
@@ -44,7 +41,55 @@ class PuterManager private constructor(private val context: Context) {
         }
     }
 
+    private val authBroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                "com.blurr.voice.PUTER_AUTH_SUCCESS" -> {
+                    val token = intent.getStringExtra("token")
+                    Log.d(TAG, "Received auth success broadcast with token: $token")
+                    if (!token.isNullOrEmpty()) {
+                        // Store the token for future use
+                        val editor = context?.getSharedPreferences("auth", Context.MODE_PRIVATE)?.edit()
+                        editor?.putString("puter_token", token)
+                        editor?.apply()
+
+                        // Inject token into the WebView's JavaScript context if service is bound
+                        if (isBound && puterService != null) {
+                            puterService?.evaluateJavascript("""
+                                (function() {
+                                    if (window.handleAuthCompletion) {
+                                        window.handleAuthCompletion('$token');
+                                    } else {
+                                        console.error('handleAuthCompletion function not found');
+                                    }
+                                })();
+                            """.trimIndent(), null)
+                        } else {
+                            Log.w(TAG, "PuterService not bound, token stored but not injected to WebView")
+                        }
+
+                        // Complete any pending sign-in operations
+                        signInCallback?.invoke(true)
+                        signInCallback = null
+                    }
+                }
+                "com.blurr.voice.PUTER_AUTH_FAILED" -> {
+                    Log.d(TAG, "Received auth failed broadcast")
+                    signInCallback?.invoke(false)
+                    signInCallback = null
+                }
+            }
+        }
+    }
+
     fun initialize() {
+        // Register the broadcast receiver for authentication events
+        val filter = IntentFilter().apply {
+            addAction("com.blurr.voice.PUTER_AUTH_SUCCESS")
+            addAction("com.blurr.voice.PUTER_AUTH_FAILED")
+        }
+        context.registerReceiver(authBroadcastReceiver, filter)
+        
         val intent = Intent(context, PuterService::class.java)
         context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
         context.startService(intent)
@@ -54,6 +99,12 @@ class PuterManager private constructor(private val context: Context) {
         if (isBound) {
             context.unbindService(connection)
             isBound = false
+        }
+        try {
+            context.unregisterReceiver(authBroadcastReceiver)
+        } catch (e: IllegalArgumentException) {
+            // Receiver was not registered, which is fine
+            Log.d(TAG, "Broadcast receiver was not registered or already unregistered")
         }
     }
     

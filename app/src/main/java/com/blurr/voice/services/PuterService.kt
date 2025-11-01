@@ -3,12 +3,14 @@ package com.blurr.voice.services
 import android.app.Dialog
 import android.app.Service
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
 import android.view.ViewGroup
 import android.webkit.*
 import android.os.Message
+import androidx.browser.customtabs.CustomTabsIntent
 import com.blurr.voice.LoginActivity
 import com.blurr.voice.PuterWebChromeClient
 
@@ -63,10 +65,36 @@ class PuterService : Service() {
                 webViewClient = object : WebViewClient() {
                     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {  
                         val url = request?.url?.toString() ?: return false  
-            
-                        // This should no longer be needed since we're using popup WebViews
+                        
                         Log.d(TAG, "Main WebView loading URL: $url")
-                        return false
+                        
+                        // Check if this is a Puter authentication URL
+                        if (url.contains("puter.com") && (url.contains("/action/sign-in") || url.contains("embedded_in_popup=true"))) {
+                            Log.d(TAG, "Detected Puter authentication URL: $url")
+                            
+                            // Open the authentication URL in Chrome Custom Tab
+                            val customTabsIntent = CustomTabsIntent.Builder()
+                                .setShowTitle(true)
+                                .build()
+                            
+                            // Add the redirect URL to the auth URL so it returns to our app
+                            val modifiedUrl = if (!url.contains("redirect_uri=")) {
+                                val redirectUri = "blurrputer://auth-callback"
+                                if (url.contains("?")) {
+                                    "$url&redirect_uri=$redirectUri"
+                                } else {
+                                    "$url?redirect_uri=$redirectUri"
+                                }
+                            } else {
+                                url
+                            }
+                            
+                            customTabsIntent.launchUrl(this@PuterService, android.net.Uri.parse(modifiedUrl))
+                            
+                            return true // Indicate that we handled the URL
+                        }
+                        
+                        return false // Allow normal URL loading
                     }
 
                     override fun onPageFinished(view: WebView?, url: String?) {
