@@ -2,6 +2,7 @@ package com.blurr.voice.activities
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -13,6 +14,10 @@ import androidx.appcompat.app.AppCompatActivity
 import com.blurr.voice.R
 import com.blurr.voice.PuterWebChromeClient
 import com.blurr.voice.managers.PuterManager
+import com.blurr.voice.utilities.OnboardingManager
+import com.blurr.voice.MainActivity
+import com.blurr.voice.OnboardingPermissionsActivity
+import org.json.JSONObject
 
 class PuterWebViewActivity : AppCompatActivity() {
     private lateinit var webView: WebView
@@ -102,7 +107,7 @@ class PuterWebViewActivity : AppCompatActivity() {
 
     private fun loadPuterWebsite() {
         webView.visibility = View.VISIBLE
-        webView.loadUrl("https://puterwebp.vercel.app") // Replace with actual deployed URL when available
+        webView.loadUrl("https://puterwebp.vercel.app") // Updated to the correct deployed URL
     }
 
     // This function is called when the login button is clicked
@@ -134,6 +139,27 @@ class PuterWebViewActivity : AppCompatActivity() {
             runOnUiThread {
                 // Update UI or store user information
                 // You can broadcast the success to other parts of the app
+                
+                // Extract token from user JSON if available and store it
+                try {
+                    val userObject = JSONObject(userJson)
+                    val token = userObject.optString("token", "")
+                    if (token.isNotEmpty()) {
+                        puterManager.initializeWithToken(token)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error parsing user JSON", e)
+                    // If we can't parse the JSON, continue anyway
+                }
+                
+                // Navigate to the main app flow after successful authentication
+                val intent = if (OnboardingManager(this@PuterWebViewActivity).isOnboardingCompleted()) {
+                    Intent(this@PuterWebViewActivity, MainActivity::class.java)
+                } else {
+                    Intent(this@PuterWebViewActivity, OnboardingPermissionsActivity::class.java)
+                }
+                startActivity(intent)
+                finish() // Close the PuterWebViewActivity
             }
         }
 

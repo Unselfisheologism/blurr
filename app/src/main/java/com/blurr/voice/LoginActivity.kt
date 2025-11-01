@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.blurr.voice.utilities.OnboardingManager
 import com.blurr.voice.utilities.UserProfileManager
 import com.blurr.voice.managers.PuterManager
+import com.blurr.voice.activities.PuterWebViewActivity
 
 class LoginActivity : AppCompatActivity() {
 
@@ -50,28 +51,11 @@ class LoginActivity : AppCompatActivity() {
 
     private fun signInWithPuter() {
         Log.d(TAG, "Sign in with Puter button clicked")
-        progressBar.visibility = View.VISIBLE
-        loadingText.visibility = View.VISIBLE
-        puterSignInButton.isEnabled = false
-    
-        // Use PuterManager's signIn method which will handle popup WebView
-        val signInFuture = puterManager.signIn()
-
-        signInFuture.whenComplete { success, error ->
-            runOnUiThread {
-                progressBar.visibility = View.GONE
-                loadingText.visibility = View.GONE
-                if (success == true) {
-                    Log.d(TAG, "Authentication successful")
-                    Toast.makeText(this, "Authentication successful!", Toast.LENGTH_SHORT).show()
-                    startPostAuthFlow()
-                } else {
-                    puterSignInButton.isEnabled = true
-                    Log.e(TAG, "Authentication failed", error) 
-                    Toast.makeText(this, "Authentication failed: ${error?.message}", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
+        // Instead of trying to authenticate directly, open the PuterWebViewActivity
+        // where the user can interact with the web app UI
+        val intent = Intent(this@LoginActivity, PuterWebViewActivity::class.java)
+        startActivity(intent)
+        finish() // Close LoginActivity and let the user authenticate in the web view
     }
 
     private fun startPostAuthFlow() {

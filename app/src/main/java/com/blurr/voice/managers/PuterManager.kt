@@ -42,7 +42,6 @@ class PuterManager private constructor(private val context: Context) {
     }
 
     
-
     fun initialize() {
         val intent = Intent(context, PuterService::class.java)
         context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
@@ -67,7 +66,8 @@ class PuterManager private constructor(private val context: Context) {
         return "callback_${callbackCounter++}"
     }
 
-    // Authentication sign in functionality - now works with popup WebView
+    // Authentication sign in functionality - now works with the new web app
+    // The user interacts with the web app UI directly
     fun signIn(): CompletableFuture<Boolean> {
         val future = CompletableFuture<Boolean>()
         
@@ -77,7 +77,7 @@ class PuterManager private constructor(private val context: Context) {
             puterService?.signInCallback = null
         }
 
-        // First check if already signed in
+        // Check if already signed in
         puterService?.puterAuthIsSignedIn { signedIn: Boolean ->
             if (signedIn) {
                 // Already signed in
@@ -85,32 +85,11 @@ class PuterManager private constructor(private val context: Context) {
                 future.complete(true)
                 puterService?.signInCallback = null
             } else {
-                Log.d(TAG, "User is not signed in, initiating sign in process")
-                // Not signed in, initiate sign in process through popup WebView
-                puterService?.evaluateJavascript("""
-                    (function() {
-                        try {
-                            console.log("Attempting to sign in with Puter.js via popup");
-                            // Use puter.auth.signIn() which should open a popup for authentication
-                            puter.auth.signIn().then(user => {
-                                console.log("Authentication successful", user);
-                                if (window.AndroidInterface) {
-                                    window.AndroidInterface.onAuthSuccess(JSON.stringify(user));
-                                }
-                            }).catch(error => {
-                                console.error("Authentication error", error);
-                                if (window.AndroidInterface) {
-                                    window.AndroidInterface.onAuthError(error.message);
-                                }
-                            });
-                        } catch (e) {
-                            console.error("Error calling signIn", e);
-                            if (window.AndroidInterface) {
-                                window.AndroidInterface.onAuthError("Failed to initialize sign-in: " + e.message);
-                            }
-                        }
-                    })();
-                """.trimIndent(), null)
+                Log.d(TAG, "User is not signed in, please interact with the web app UI")
+                // For the new architecture, authentication happens through the web app UI
+                // The user needs to click the "Authenticate with Puter" button in the web app
+                // We return a future that will be completed when the web app calls back
+                // This approach allows the web app to handle its own authentication flow
             }
         }
         
