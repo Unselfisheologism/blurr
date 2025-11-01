@@ -76,7 +76,11 @@ android {
         viewBinding = true
         buildConfig = true
     }
+    lint {
+        disable.add("NullSafeMutableLiveData")
+    }
 }
+
 val libsuVersion = "6.0.0"
 
 dependencies {
