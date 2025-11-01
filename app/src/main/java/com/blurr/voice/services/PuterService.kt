@@ -73,15 +73,15 @@ class PuterService : Service() {
                         super.onPageFinished(view, url)
                         Log.d(TAG, "Page finished loading: $url")
                         // Inject Android interface after page loads
-                        view?.addJavascriptInterface(AndroidInterface(), "AndroidInterface")
+                        view?.addJavascriptInterface(AndroidInterface(), "Android")
                     }
                 }
 
                 webChromeClient = PuterWebChromeClient()
             }
 
-            // Load the Puter bridge HTML
-            webView?.loadUrl("file:///android_asset/puter_webview.html")
+            // Load the Puter website
+            webView?.loadUrl("https://puterwebp.vercel.app") // Replace with actual deployed URL when available
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing WebView", e)
         }
@@ -95,13 +95,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterChat('$query')
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -118,13 +118,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterTxt2Img('$prompt')
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -141,13 +141,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterImg2Txt('$imageData')
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -164,13 +164,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterTxt2Speech('$text')
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -187,13 +187,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterKvGet('$key')
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -210,13 +210,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterKvSet('$key', '$value')
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -233,13 +233,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterKvDel('$key')
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -256,13 +256,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterKvList('$pattern', $returnValues)
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -279,13 +279,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterKvIncr('$key', $amount)
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -302,13 +302,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterKvDecr('$key', $amount)
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -325,13 +325,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterKvFlush()
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -347,18 +347,18 @@ class PuterService : Service() {
         webView?.post {
             val jsCode = """
                 puterChatStream('$query', function(chunk) {
-                    if (window.AndroidInterface) {
-                        window.AndroidInterface.onAIResponse(JSON.stringify({type: 'chunk', data: chunk}), '$callbackId');
+                    if (window.Android) {
+                        window.Android.onAIResponse(JSON.stringify({type: 'chunk', data: chunk}), '$callbackId');
                     }
                 })
                 .then(response => {
-                    if (window.AndroidInterface) {
-                        window.AndroidInterface.onAIResponse(JSON.stringify({type: 'complete', data: response}), '$callbackId');
+                    if (window.Android) {
+                        window.Android.onAIResponse(JSON.stringify({type: 'complete', data: response}), '$callbackId');
                     }
                 })
                 .catch(error => {
-                    if (window.AndroidInterface) {
-                        window.AndroidInterface.onAIError(error.message, '$callbackId');
+                    if (window.Android) {
+                        window.Android.onAIError(error.message, '$callbackId');
                     }
                 });
             """.trimIndent()
@@ -375,13 +375,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterFsWrite('$path', '$data', JSON.parse('$optionsJson'))
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -398,13 +398,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterFsRead('$path', JSON.parse('$optionsJson'))
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -421,13 +421,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterFsMkdir('$path', JSON.parse('$optionsJson'))
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -444,13 +444,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterFsReaddir('$path')
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -467,13 +467,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterFsDelete('$path', JSON.parse('$optionsJson'))
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -490,13 +490,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterFsMove('$source', '$destination', JSON.parse('$optionsJson'))
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -513,13 +513,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterFsCopy('$source', '$destination', JSON.parse('$optionsJson'))
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -536,13 +536,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterFsRename('$path', '$newName')
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -559,13 +559,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterFsStat('$path')
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -582,13 +582,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterFsSpace()
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -605,13 +605,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterKvList('task_*', true)
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -628,13 +628,13 @@ class PuterService : Service() {
             val jsCode = """
                 puterKvSet('$key', JSON.parse('$taskDataJson'))
                     .then(response => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIResponse(JSON.stringify(response), '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIResponse(JSON.stringify(response), '$callbackId');
                         }
                     })
                     .catch(error => {
-                        if (window.AndroidInterface) {
-                            window.AndroidInterface.onAIError(error.message, '$callbackId');
+                        if (window.Android) {
+                            window.Android.onAIError(error.message, '$callbackId');
                         }
                     });
             """.trimIndent()
@@ -661,12 +661,12 @@ class PuterService : Service() {
         webView?.post {
             val jsCode = """
                 puter.auth.isSignedIn().then(signedIn => {
-                    if (window.AndroidInterface) {
-                        window.AndroidInterface.onAIResponse(JSON.stringify({signedIn: signedIn}), '$callbackId');
+                    if (window.Android) {
+                        window.Android.onAIResponse(JSON.stringify({signedIn: signedIn}), '$callbackId');
                     }
                 }).catch(error => {
-                    if (window.AndroidInterface) {
-                        window.AndroidInterface.onAIError(error.message, '$callbackId');
+                    if (window.Android) {
+                        window.Android.onAIError(error.message, '$callbackId');
                     }
                 });
             """.trimIndent()
@@ -682,12 +682,12 @@ class PuterService : Service() {
         webView?.post {
             val jsCode = """
                 puter.auth.getUser().then(user => {
-                    if (window.AndroidInterface) {
-                        window.AndroidInterface.onAIResponse(JSON.stringify(user), '$callbackId');
+                    if (window.Android) {
+                        window.Android.onAIResponse(JSON.stringify(user), '$callbackId');
                     }
                 }).catch(error => {
-                    if (window.AndroidInterface) {
-                        window.AndroidInterface.onAIError(error.message, '$callbackId');
+                    if (window.Android) {
+                        window.Android.onAIError(error.message, '$callbackId');
                     }
                 });
             """.trimIndent()
@@ -710,8 +710,8 @@ class PuterService : Service() {
                     }  
                   
                     // Notify that authentication is complete  
-                    if (window.AndroidInterface) {  
-                        window.AndroidInterface.onAuthSuccess('{"success": true}');  
+                    if (window.Android) {  
+                        window.Android.onAuthSuccess('{"success": true}');  
                     }  
                 })();  
             """.trimIndent()  

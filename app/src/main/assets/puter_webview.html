@@ -4,8 +4,112 @@
     <meta charset="utf-8">
     <title>Puter.js Bridge</title>
     <script src="https://js.puter.com/v2/"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5;
+            margin: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .auth-section {
+            text-align: center;
+            margin: 30px 0;
+        }
+        #loginButton {
+            padding: 12px 24px;
+            font-size: 16px;
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        #loginButton:hover {
+            background: #3367d6;
+        }
+        #auth-status {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .user-info {
+            margin: 20px 0;
+            padding: 15px;
+            background: #e8f4fd;
+            border-radius: 4px;
+            display: none;
+        }
+        .user-info h3 {
+            margin-top: 0;
+        }
+        #signOutButton {
+            padding: 8px 16px;
+            background: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        #signOutButton:hover {
+            background: #d32f2f;
+        }
+        .feature-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h1>Puter.js Integration</h1>
+        
+        <div class="auth-section">
+            <button id="loginButton" onclick="authenticateWithPuter()">
+                Login with Puter
+            </button>
+            <div id="auth-status"></div>
+        </div>
+        
+        <div id="user-info" class="user-info">
+            <h3>User Information</h3>
+            <p id="user-details"></p>
+            <button id="signOutButton" onclick="signOut()">Sign Out</button>
+        </div>
+        
+        <div id="feature-section" class="feature-section">
+            <h3>Puter.js Features Available</h3>
+            <p>Once authenticated, you can use all Puter.js features through the native Android bridge.</p>
+        </div>
+    </div>
+
     <script>
         // Store the auth resolver to complete authentication later
         window.__puterAuthResolver = null;
@@ -48,6 +152,10 @@
                         window.__puterAuthResolver = null;
                     }
                 }
+                
+                // Update UI to show authentication success
+                updateAuthStatus("Authentication successful!", "success");
+                loadUserInfo();
             },
             onAuthError: function(errorMessage) {
                 console.error("Android reports auth error:", errorMessage);
@@ -55,6 +163,9 @@
                     window.__puterAuthResolver(null);
                     window.__puterAuthResolver = null;
                 }
+                
+                // Update UI to show authentication error
+                updateAuthStatus("Authentication failed: " + errorMessage, "error");
             }
         };
         
@@ -72,6 +183,10 @@
             
             puter.auth.on('signout', function() {
                 console.log("User signed out");
+                // Update UI to show signed out state
+                document.getElementById('user-info').style.display = 'none';
+                document.getElementById('feature-section').style.display = 'none';
+                updateAuthStatus("Signed out successfully", "success");
             });
             
             // Listen for postMessage events from popup windows
@@ -149,6 +264,9 @@
             if (window.puter && window.puter.auth) {
                 // Ensure the postMessage listener is properly set up
                 console.log("Puter.js is ready and available");
+                
+                // Check if user is already authenticated
+                checkAuthStatus();
             } else {
                 // Wait for puter to be ready
                 console.log("Waiting for puter.js to be ready");
@@ -160,6 +278,98 @@
                 console.log("Found existing auth token in localStorage");
             }
         });
+        
+        // Function to authenticate with Puter
+        function authenticateWithPuter() {
+            console.log("Initiating authentication with Puter");
+            updateAuthStatus("Initiating authentication...", "info");
+            
+            puter.auth.signIn()
+                .then(user => {
+                    console.log("Authentication successful:", user);
+                    updateAuthStatus("Authentication successful!", "success");
+                    loadUserInfo();
+                })
+                .catch(error => {
+                    console.error("Authentication failed:", error);
+                    updateAuthStatus("Authentication failed: " + error.message, "error");
+                });
+        }
+        
+        // Function to sign out
+        function signOut() {
+            puter.auth.signOut()
+                .then(() => {
+                    console.log("Successfully signed out");
+                    document.getElementById('user-info').style.display = 'none';
+                    document.getElementById('feature-section').style.display = 'none';
+                    updateAuthStatus("Signed out successfully", "success");
+                })
+                .catch(error => {
+                    console.error("Sign out failed:", error);
+                    updateAuthStatus("Sign out failed: " + error.message, "error");
+                });
+        }
+        
+        // Function to check authentication status
+        function checkAuthStatus() {
+            puter.auth.isSignedIn()
+                .then(isSignedIn => {
+                    if (isSignedIn) {
+                        console.log("User is already signed in");
+                        loadUserInfo();
+                        updateAuthStatus("Already signed in", "success");
+                    } else {
+                        console.log("User is not signed in");
+                        updateAuthStatus("Not signed in", "info");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error checking auth status:", error);
+                    updateAuthStatus("Error checking auth status: " + error.message, "error");
+                });
+        }
+        
+        // Function to load and display user information
+        function loadUserInfo() {
+            puter.auth.getUser()
+                .then(user => {
+                    console.log("User info:", user);
+                    const userInfoDiv = document.getElementById('user-info');
+                    const userDetails = document.getElementById('user-details');
+                    
+                    userDetails.innerHTML = `
+                        <strong>Username:</strong> ${user.username}<br>
+                        <strong>Email:</strong> ${user.email || 'Not provided'}<br>
+                        <strong>UUID:</strong> ${user.uuid}<br>
+                        <strong>Created:</strong> ${new Date(user.created_at).toLocaleDateString()}
+                    `;
+                    
+                    userInfoDiv.style.display = 'block';
+                    document.getElementById('feature-section').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error("Error getting user info:", error);
+                    updateAuthStatus("Error getting user info: " + error.message, "error");
+                });
+        }
+        
+        // Function to update authentication status message
+        function updateAuthStatus(message, type) {
+            const statusDiv = document.getElementById('auth-status');
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+            
+            // Remove existing classes
+            statusDiv.classList.remove('status-success', 'status-error');
+            
+            // Add appropriate class based on type
+            if (type === 'success') {
+                statusDiv.classList.add('status-success');
+            } else if (type === 'error') {
+                statusDiv.classList.add('status-error');
+            }
+        }
         
         // Bridge functions to interact with Puter.js from native Android code
         async function puterChat(query) {
@@ -430,7 +640,6 @@
         }
         
         
-
         // Ready indicator
         window.puterServiceReady = true;
         
