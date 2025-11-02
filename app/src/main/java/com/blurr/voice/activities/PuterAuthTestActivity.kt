@@ -57,7 +57,7 @@ class PuterAuthTestActivity : AppCompatActivity() {
         testScope.launch {
             try {
                 val testSuite = PuterAuthIntegrationTest(this@PuterAuthTestActivity)
-                val results = testSuite.runAllTests().await()
+                val results = testSuite.runAllTests().get(30, java.util.concurrent.TimeUnit.SECONDS)
                 
                 // Update UI with results
                 runOnUiThread {

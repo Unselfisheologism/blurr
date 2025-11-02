@@ -847,7 +847,7 @@ class PuterService : Service() {
             puterAuthIsSignedIn { signedIn ->
                 Log.d(TAG, "Current auth status: $signedIn")
             }
-            return if (puterManager.isUserSignedIn()) "true" else "false"
+            return "false"
         }
         }
     }
