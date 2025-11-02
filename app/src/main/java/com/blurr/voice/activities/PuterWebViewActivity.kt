@@ -120,7 +120,7 @@ class PuterWebViewActivity : AppCompatActivity() {
 
     private fun loadPuterWebsite() {
         webView.visibility = View.VISIBLE
-        webView.loadUrl("https://puterwebp.vercel.app") // Updated to the correct deployed URL
+        webView.loadUrl("file:///android_asset/puterwebp.html")
     }
 
     // This function is called when the login button is clicked
@@ -137,6 +137,21 @@ class PuterWebViewActivity : AppCompatActivity() {
         startService(backgroundServiceIntent)
         
         // Navigate back to the appropriate main app activity based on onboarding status
+        val intent = if (OnboardingManager(this).isOnboardingCompleted()) {
+            Intent(this, MainActivity::class.java)
+        } else {
+            Intent(this, OnboardingPermissionsActivity::class.java)
+        }
+        
+        // Clear the activity stack to prevent back navigation to the WebView
+        intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+        
+        startActivity(intent)
+        finish() // Close the PuterWebViewActivity
+    }
+    
+    private fun navigateToMainOrOnboarding() {
+        // Navigate to the appropriate main app activity based on onboarding status
         val intent = if (OnboardingManager(this).isOnboardingCompleted()) {
             Intent(this, MainActivity::class.java)
         } else {
@@ -170,7 +185,16 @@ class PuterWebViewActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        webView.destroy()
+        // Don't destroy the WebView immediately to maintain the communication channel
+        // The WebView will be managed by the background service after authentication
+        webView.clearHistory()
+        webView.clearCache(true)
+        webView.loadUrl("about:blank")
+        webView.onPause()
+        webView.removeAllViews()
+        // Keep the WebView alive for a short time to allow communication to complete
+        // The actual destruction will be handled by the background service
+        // webView.destroy()
         super.onDestroy()
     }
     
@@ -201,6 +225,18 @@ class PuterWebViewActivity : AppCompatActivity() {
                 } catch (e: Exception) {
                     Log.e(TAG, "Error parsing user JSON", e)
                     // If we can't parse the JSON, continue anyway
+                }
+                
+                // Determine if user needs onboarding or can go to main activity
+                val onboardingManager = OnboardingManager(this@PuterWebViewActivity)
+                if (!onboardingManager.isOnboardingCompleted()) {
+                    // User needs to complete onboarding
+                    Log.d(TAG, "User needs to complete onboarding")
+                    // Continue to onboarding (stay in this activity for now)
+                } else {
+                    // User has completed onboarding, can go to main activity
+                    Log.d(TAG, "User has completed onboarding, navigating to MainActivity")
+                    navigateToMainOrOnboarding()
                 }
             }
         }
@@ -249,6 +285,21 @@ class PuterWebViewActivity : AppCompatActivity() {
                     Log.e(TAG, "Error processing response JSON", e)
                 }
             }
+        }
+        
+        @JavascriptInterface
+        fun onOnboardingComplete() {
+            Log.d(TAG, "Onboarding completed from web interface")
+            runOnUiThread {
+                // Navigate to main activity after onboarding completion
+                navigateToMainOrOnboarding()
+            }
+        }
+        
+        @JavascriptInterface
+        fun checkAuthStatus(): String {
+            Log.d(TAG, "Checking auth status from web interface")
+            return if (puterManager.isUserSignedIn()) "true" else "false"
         }
     }
 }

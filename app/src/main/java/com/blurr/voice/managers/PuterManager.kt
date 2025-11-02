@@ -699,4 +699,28 @@ class PuterManager private constructor(private val context: Context) {
         // This is a placeholder implementation
         return byteArrayOf()
     }
+    
+    /**
+     * Add a callback to listen for authentication state changes
+     */
+    fun addAuthStateListener(callback: (Boolean) -> Unit) {
+        // For now, we'll just call the callback with the current state
+        // In a more sophisticated implementation, we'd maintain a list of listeners
+        // and notify them when the authentication state changes
+        if (isBound) {
+            puterService?.puterAuthIsSignedIn { signedIn ->
+                callback(signedIn)
+            }
+        } else {
+            callback(false)
+        }
+    }
+    
+    /**
+     * Remove an authentication state listener
+     * (In a more complete implementation, we'd track and remove specific listeners)
+     */
+    fun removeAuthStateListener() {
+        // Placeholder implementation
+    }
 }

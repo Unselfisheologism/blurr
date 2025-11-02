@@ -99,7 +99,7 @@ class PuterBackgroundService : Service() {
             }
 
             // Load the Puter website
-            webView?.loadUrl("https://puterwebp.vercel.app")
+            webView?.loadUrl("file:///android_asset/puterwebp.html")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing background WebView", e)
         }
@@ -146,6 +146,20 @@ class PuterBackgroundService : Service() {
         fun handleAuthResponse(token: String) {
             Log.d(TAG, "Received auth response from JavaScript in background: $token")
             // Handle authentication response in background
+        
+        @JavascriptInterface
+        fun updateAuthState(signedIn: Boolean) {
+            Log.d(TAG, "Updating auth state from web interface in background: $signedIn")
+            // This method will be called to update the native service's authentication state
+            // based on changes in the web authentication status
+        }
+        
+        @JavascriptInterface
+        fun checkAuthStatus(): String {
+            Log.d(TAG, "Checking auth status from web interface in background")
+            // For background service, we can return a simple check
+            return "false" // Background service doesn't typically handle auth directly
+        }
         }
     }
 

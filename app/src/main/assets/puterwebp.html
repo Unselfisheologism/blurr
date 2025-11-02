@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puter Authentication Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+        .auth-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+        }
+        .auth-button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .hidden {
+            display: none;
+        }
+        .user-info {
+            margin-top: 20px;
+            text-align: left;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .action-buttons {
+            margin-top: 20px;
+        }
+        .action-buttons button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Puter Authentication Demo</h1>
+        <p>This demo shows how to authenticate with Puter and communicate with an Android app.</p>
+        <button id="authButton" class="auth-button">Authenticate with Puter</button>
+        <div id="status" class="status hidden"></div>
+        <div id="userInfo" class="user-info hidden"></div>
+        <div id="puterActions" class="action-buttons hidden">
+            <h3>Puter Actions</h3>
+            <button id="listFilesBtn" class="auth-button">List Files</button>
+            <button id="writeFileBtn" class="auth-button">Write File</button>
+            <button id="readFileBtn" class="auth-button">Read File</button>
+            <button id="signOutBtn" class="auth-button" style="background-color: #f44336;">Sign Out</button>
+        </div>
+    </div>
+    
+    <!-- Load Puter.js SDK -->
+    <script src="https://js.puter.com/v2/"></script>
+    
+    <!-- Inlined Puter Web Interface code -->
+    <script>
+        /**
+         * Puter Web Interface for Android Communication
+         * This script provides a clean interface for Android apps to communicate with Puter.js
+         */
+        class PuterWebInterface {
+            constructor() {
+                this.isInitialized = false;
+                this.puter = window.puter;
+                this.authInProgress = false;
+                // Ensure puter is available
+                if (!this.puter) {
+                    console.error('Puter SDK not found. Please ensure puter.js is loaded before this script.');
+                    return;
+                }
+                // Set up authentication callback
+                this.puter.onAuth = (user) => {
+                    console.log('Puter auth callback received:', user);
+                    this.onAuthenticationSuccess(user);
+                };
+                // Add message listener for cross-origin communication
+                this.setupMessageListener();
+                this.isInitialized = true;
+                console.log('PuterWebInterface initialized');
+            }
+            /**
+             * Set up message listener for cross-origin communication
+             */
+            setupMessageListener() {
+                window.addEventListener('message', (event) => {
+                    // Verify the origin to prevent unauthorized access
+                    // In a production app, you should verify the origin properly
+                    if (event.data && event.data.source === 'android-app') {
+                        this.handleAndroidMessage(event.data);
+                    }
+                });
+            }
+            /**
+             * Handle messages from Android app
+             */
+            handleAndroidMessage(data) {
+                const { action, params } = data;
+                switch(action) {
+                    case 'authenticate':
+                        this.authenticate();
+                        break;
+                    case 'executeOperation':
+                        this.executeOperation(params.operation, params.params);
+                        break;
+                    case 'checkAuthStatus':
+                        this.checkAuthStatus();
+                        break;
+                    case 'getUserInfo':
+                        this.getUserInfo();
+                        break;
+                    case 'signOut':
+                        this.signOut();
+                        break;
+                    default:
+                        console.error('Unknown action:', action);
+                        this.sendResponse('error', { message: `Unknown action: ${action}` });
+                }
+            }
+            /**
+             * Trigger Puter authentication
+             */
+            async authenticate() {
+                try {
+                    if (!this.isInitialized) {
+                        throw new Error('PuterWebInterface not initialized');
+                    }
+                    console.log('Starting authentication process...');
+                    this.authInProgress = true;
+                    // Check if already authenticated
+                    const isAuthenticated = await this.puter.auth.isAuthenticated();
+                    if (isAuthenticated) {
+                        console.log('User already authenticated');
+                        const user = await this.puter.getUser();
+                        this.onAuthenticationSuccess(user);
+                        this.authInProgress = false;
+                        return;
+                    }
+                    // Start authentication process
+                    console.log('Calling puter.auth.signIn()');
+                    await this.puter.auth.signIn();
+                    console.log('puter.auth.signIn() completed');
+                } catch (error) {
+                    console.error('Authentication error:', error);
+                    this.authInProgress = false;
+                    this.onAuthenticationError(error);
+                }
+            }
+            /**
+             * Execute a Puter operation
+             */
+            async executeOperation(operation, params) {
+                try {
+                    if (!this.isInitialized) {
+                        throw new Error('PuterWebInterface not initialized');
+                    }
+                    let result;
+                    switch(operation) {
+                        case 'listFiles':
+                            result = await this.puter.fs.ls(params.path || '/');
+                            break;
+                        case 'writeFile':
+                            result = await this.puter.fs.write(params.path, params.content);
+                            break;
+                        case 'readFile':
+                            result = await this.puter.fs.read(params.path);
+                            break;
+                        case 'deleteFile':
+                            result = await this.puter.fs.delete(params.path);
+                            break;
+                        case 'createDir':
+                            result = await this.puter.fs.mkdir(params.path);
+                            break;
+                        case 'statFile':
+                            result = await this.puter.fs.stat(params.path);
+                            break;
+                        case 'uploadFile':
+                            // params should include: path, fileData (base64 encoded), fileName
+                            const fileData = this.base64ToArrayBuffer(params.fileData);
+                            const fileBlob = new Blob([fileData], { type: params.mimeType || 'application/octet-stream' });
+                            result = await this.puter.fs.upload(fileBlob, params.path, params.fileName);
+                            break;
+                        case 'downloadFile':
+                            result = await this.puter.fs.download(params.path);
+                            break;
+                        default:
+                            throw new Error(`Unknown operation: ${operation}`);
+                    }
+                    this.onOperationSuccess(operation, result);
+                    return result;
+                } catch (error) {
+                    console.error(`Error in ${operation}:`, error);
+                    this.onOperationError(operation, error);
+                    throw error;
+                }
+            }
+            /**
+             * Check authentication status
+             */
+            async checkAuthStatus() {
+                try {
+                    if (!this.isInitialized) {
+                        throw new Error('PuterWebInterface not initialized');
+                    }
+                    const isAuthenticated = await this.puter.auth.isAuthenticated();
+                    this.sendResponse('authStatus', { isAuthenticated });
+                    return isAuthenticated;
+                } catch (error) {
+                    console.error('Error checking auth status:', error);
+                    this.sendResponse('error', { message: error.message });
+                    throw error;
+                }
+            }
+            /**
+             * Get user information
+             */
+            async getUserInfo() {
+                try {
+                    if (!this.isInitialized) {
+                        throw new Error('PuterWebInterface not initialized');
+                    }
+                    const isAuthenticated = await this.puter.auth.isAuthenticated();
+                    if (!isAuthenticated) {
+                        this.sendResponse('userInfo', null);
+                        return null;
+                    }
+                    const user = await this.puter.getUser();
+                    this.sendResponse('userInfo', user);
+                    return user;
+                } catch (error) {
+                    console.error('Error getting user info:', error);
+                    this.sendResponse('error', { message: error.message });
+                    throw error;
+                }
+            }
+            /**
+             * Sign out from Puter
+             */
+            async signOut() {
+                try {
+                    if (!this.isInitialized) {
+                        throw new Error('PuterWebInterface not initialized');
+                    }
+                    await this.puter.auth.signOut();
+                    this.sendResponse('signOut', { success: true });
+                } catch (error) {
+                    console.error('Error signing out:', error);
+                    this.sendResponse('error', { message: error.message });
+                    throw error;
+                }
+            }
+            /**
+             * Handle successful authentication
+             */
+            onAuthenticationSuccess(user) {
+                console.log('Authentication successful:', user);
+                this.authInProgress = false;
+                this.sendResponse('authSuccess', { user });
+                // Also notify via Android interface if available
+                if (window.Android && typeof window.Android.onPuterAuthSuccess === 'function') {
+                    try {
+                        console.log('Calling Android.onPuterAuthSuccess with user:', user);
+                        window.Android.onPuterAuthSuccess(JSON.stringify(user));
+                    } catch (error) {
+                        console.error('Error calling Android.onPuterAuthSuccess:', error);
+                    }
+                } else {
+                    console.log('Android interface not available or onPuterAuthSuccess not a function');
+                    console.log('Available Android methods:', window.Android ? Object.getOwnPropertyNames(window.Android) : 'None');
+                }
+                // After a brief delay to ensure the Android app receives the callback,
+                // redirect to the success page
+                setTimeout(() => {
+                    // Check if we're in a WebView context (Android)
+                    if (window.Android) {
+                        // In Android WebView, we don't need to redirect the page
+                        // The Android app will handle the redirect
+                        console.log('Running in Android WebView - deferring redirect to Android app');
+                    } else {
+                        // For regular browsers, redirect to the success page
+                        window.location.href = 'success.html';
+                    }
+                }, 1000); // 1 second delay to ensure callback is processed
+            }
+            /**
+             * Handle authentication error
+             */
+            onAuthenticationError(error) {
+                console.error('Authentication error:', error);
+                this.authInProgress = false;
+                this.sendResponse('authError', { error: error.message });
+                // Also notify via Android interface if available
+                if (window.Android && typeof window.Android.onPuterAuthError === 'function') {
+                    try {
+                        window.Android.onPuterAuthError(error.message);
+                    } catch (err) {
+                        console.error('Error calling Android.onPuterAuthError:', err);
+                    }
+                }
+            }
+            /**
+             * Handle successful operation
+             */
+            onOperationSuccess(operation, result) {
+                console.log(`${operation} successful:`, result);
+                this.sendResponse('operationSuccess', { operation, result: this.serializeResult(result) });
+                // Also notify via Android interface if available
+                if (window.Android && typeof window.Android.onPuterActionSuccess === 'function') {
+                    try {
+                        window.Android.onPuterActionSuccess(operation, JSON.stringify(this.serializeResult(result)));
+                    } catch (err) {
+                        console.error('Error calling Android.onPuterActionSuccess:', err);
+                    }
+                }
+            }
+            /**
+             * Handle operation error
+             */
+            onOperationError(operation, error) {
+                console.error(`Error in ${operation}:`, error);
+                this.sendResponse('operationError', { operation, error: error.message });
+                // Also notify via Android interface if available
+                if (window.Android && typeof window.Android.onPuterActionError === 'function') {
+                    try {
+                        window.Android.onPuterActionError(operation, error.message);
+                    } catch (err) {
+                        console.error('Error calling Android.onPuterActionError:', err);
+                    }
+                }
+            }
+            /**
+             * Send response back to Android
+             */
+            sendResponse(type, data) {
+                // Send message to Android if available
+                if (window.Android) {
+                    const response = { type, data, timestamp: Date.now() };
+                    // Using a generic method - Android side should handle different response types
+                    if (typeof window.Android.onPuterResponse === 'function') {
+                        try {
+                            window.Android.onPuterResponse(JSON.stringify(response));
+                        } catch (err) {
+                            console.error('Error calling Android.onPuterResponse:', err);
+                        }
+                    }
+                }
+                // Also send via postMessage for alternative communication
+                window.postMessage({
+                    source: 'puter-web-interface',
+                    type,
+                    data,
+                    timestamp: Date.now()
+                }, '*');
+            }
+            /**
+             * Convert base64 to ArrayBuffer
+             */
+            base64ToArrayBuffer(base64) {
+                const binaryString = atob(base64);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+                return bytes.buffer;
+            }
+            /**
+             * Serialize result for JSON transmission
+             */
+            serializeResult(result) {
+                // Handle different types of results
+                if (result instanceof Blob) {
+                    // For file content, we might want to convert to base64 or text depending on type
+                    return { type: 'blob', size: result.size, type: result.type };
+                } else if (result && typeof result === 'object') {
+                    // Create a serializable version
+                    return JSON.parse(JSON.stringify(result, (key, value) => {
+                        // Skip functions and undefined values
+                        if (typeof value === 'function' || value === undefined) {
+                            return undefined;
+                        }
+                        return value;
+                    }));
+                }
+                return result;
+            }
+        }
+        
+        // Initialize the interface when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.puterWebInterface = new PuterWebInterface();
+        });
+        
+        // Main application code
+        document.addEventListener('DOMContentLoaded', () => {
+            // Status element references
+            const statusDiv = document.getElementById('status');
+            const userInfoDiv = document.getElementById('userInfo');
+            const authButton = document.getElementById('authButton');
+            const puterActionsDiv = document.getElementById('puterActions');
+            const listFilesBtn = document.getElementById('listFilesBtn');
+            const writeFileBtn = document.getElementById('writeFileBtn');
+            const readFileBtn = document.getElementById('readFileBtn');
+            const signOutBtn = document.getElementById('signOutBtn');
+            
+            // Function to show status messages
+            function showStatus(message, isError = false) {
+                statusDiv.textContent = message;
+                statusDiv.className = `status ${isError ? 'error' : 'success'}`;
+                statusDiv.classList.remove('hidden');
+            }
+            
+            // Function to hide status
+            function hideStatus() {
+                statusDiv.classList.add('hidden');
+            }
+            
+            // Function to show user info
+            function showUserInfo(user) {
+                userInfoDiv.innerHTML = `
+                    <h3>Authenticated User:</h3>
+                    <p><strong>Username:</strong> ${user.username}</p>
+                    <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>UUID:</strong> ${user.uuid}</p>
+                `;
+                userInfoDiv.classList.remove('hidden');
+            }
+            
+            // Authentication button event listener
+            authButton.addEventListener('click', async () => {
+                try {
+                    showStatus('Initiating authentication...');
+                    authButton.disabled = true;
+                    // Initialize PuterWebInterface if not already done
+                    if (!window.puterWebInterface) {
+                        window.puterWebInterface = new PuterWebInterface();
+                    }
+                    // Call authenticate through the web interface
+                    await window.puterWebInterface.authenticate();
+                } catch (error) {
+                    console.error('Authentication error:', error);
+                    showStatus(`Authentication failed: ${error.message}`, true);
+                    authButton.disabled = false;
+                }
+            });
+            
+            // Event listeners for Puter actions
+            listFilesBtn.addEventListener('click', async () => {
+                try {
+                    showStatus('Listing files...');
+                    listFilesBtn.disabled = true;
+                    if (window.puterWebInterface) {
+                        await window.puterWebInterface.executeOperation('listFiles', { path: '/' });
+                    } else {
+                        const items = await puter.fs.ls('/');
+                        showStatus(`Found ${items.length} items in root directory`);
+                        console.log('Files:', items);
+                    }
+                } catch (error) {
+                    console.error('Error listing files:', error);
+                    showStatus(`Error listing files: ${error.message}`, true);
+                } finally {
+                    listFilesBtn.disabled = false;
+                }
+            });
+            
+            writeFileBtn.addEventListener('click', async () => {
+                try {
+                    showStatus('Writing file...');
+                    writeFileBtn.disabled = true;
+                    if (window.puterWebInterface) {
+                        await window.puterWebInterface.executeOperation('writeFile', { 
+                            path: '/hello.txt', 
+                            content: 'Hello from Android-Web app! Generated at: ' + new Date().toISOString()
+                        });
+                    } else {
+                        const file = await puter.fs.write('/hello.txt', 'Hello from Android-Web app! Generated at: ' + new Date().toISOString());
+                        showStatus('File written successfully');
+                        console.log('File written:', file);
+                    }
+                } catch (error) {
+                    console.error('Error writing file:', error);
+                    showStatus(`Error writing file: ${error.message}`, true);
+                } finally {
+                    writeFileBtn.disabled = false;
+                }
+            });
+            
+            readFileBtn.addEventListener('click', async () => {
+                try {
+                    showStatus('Reading file...');
+                    readFileBtn.disabled = true;
+                    if (window.puterWebInterface) {
+                        await window.puterWebInterface.executeOperation('readFile', { path: '/hello.txt' });
+                    } else {
+                        const content = await puter.fs.read('/hello.txt');
+                        showStatus('File read successfully');
+                        console.log('File content:', content);
+                    }
+                } catch (error) {
+                    console.error('Error reading file:', error);
+                    showStatus(`Error reading file: ${error.message}`, true);
+                } finally {
+                    readFileBtn.disabled = false;
+                }
+            });
+            
+            signOutBtn.addEventListener('click', async () => {
+                try {
+                    showStatus('Signing out...');
+                    signOutBtn.disabled = true;
+                    if (window.puterWebInterface) {
+                        await window.puterWebInterface.signOut();
+                    } else {
+                        await puter.auth.signOut();
+                        showStatus('Signed out successfully');
+                        hideUserInfo();
+                        puterActionsDiv.classList.add('hidden');
+                        authButton.disabled = false;
+                        authButton.textContent = 'Authenticate with Puter';
+                    }
+                } catch (error) {
+                    console.error('Error signing out:', error);
+                    showStatus(`Error signing out: ${error.message}`, true);
+                } finally {
+                    signOutBtn.disabled = false;
+                }
+            });
+            
+            // Set up event listeners for the Puter Web Interface responses
+            window.addEventListener('message', function(event) {
+                // Only process messages from our puter-web-interface
+                if (event.data && event.data.source === 'puter-web-interface') {
+                    const response = event.data;
+                    console.log('Received message from puter-web-interface:', response);
+                    if (response.type === 'authSuccess') {
+                        showStatus('Authentication successful!');
+                        showUserInfo(response.data.user);
+                        puterActionsDiv.classList.remove('hidden');
+                        authButton.disabled = true;
+                        authButton.textContent = 'Already Authenticated';
+                    } else if (response.type === 'authError') {
+                        showStatus(`Authentication failed: ${response.data.error}`, true);
+                        authButton.disabled = false;
+                    } else if (response.type === 'operationSuccess') {
+                        showStatus(`${response.data.operation} successful!`);
+                    } else if (response.type === 'operationError') {
+                        showStatus(`Error in ${response.data.operation}: ${response.data.error}`, true);
+                    } else if (response.type === 'signOut') {
+                        showStatus('Signed out successfully');
+                        hideUserInfo();
+                        puterActionsDiv.classList.add('hidden');
+                        authButton.disabled = false;
+                        authButton.textContent = 'Authenticate with Puter';
+                    }
+                }
+            });
+            
+            // Check if already authenticated when page loads
+            (async () => {
+                try {
+                    const isAuthenticated = await window.puterWebInterface.checkAuthStatus();
+                    if (isAuthenticated) {
+                        const user = await window.puterWebInterface.getUserInfo();
+                        if (user) {
+                            showStatus('Already authenticated');
+                            showUserInfo(user);
+                            puterActionsDiv.classList.remove('hidden');
+                            authButton.textContent = 'Already Authenticated';
+                            authButton.disabled = true;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error checking auth status:', error);
+                }
+            })();
+            
+            // Android interface methods for direct communication
+            window.Android = {
+                onPuterAuthSuccess: function(userJson) {
+                    console.log('Android.onPuterAuthSuccess called with:', userJson);
+                    try {
+                        const user = JSON.parse(userJson);
+                        showStatus('Authentication successful!');
+                        showUserInfo(user);
+                        puterActionsDiv.classList.remove('hidden');
+                        authButton.disabled = true;
+                        authButton.textContent = 'Already Authenticated';
+                        // Notify parent window if in iframe
+                        window.parent.postMessage({
+                            source: 'puter-web-interface',
+                            type: 'authSuccess',
+                            data: { user }
+                        }, '*');
+                        // After a brief delay to ensure the Android app receives the callback,
+                        // redirect to a simple success page or close the webview
+                        setTimeout(() => {
+                            // Check if we're in a WebView context (Android)
+                            if (window.Android) {
+                                // In Android WebView, we don't need to redirect the page
+                                // The Android app will handle the redirect
+                                console.log('Running in Android WebView - deferring redirect to Android app');
+                            } else {
+                                // For regular browsers, redirect to a success page
+                                // You can customize this redirect URL as needed
+                                window.location.href = 'success.html';
+                            }
+                        }, 1000); // 1 second delay to ensure callback is processed
+                    } catch (error) {
+                        console.error('Error parsing user JSON:', error);
+                        showStatus('Authentication successful but failed to parse user data', true);
+                    }
+                },
+                onPuterAuthError: function(error) {
+                    console.log('Android.onPuterAuthError called with:', error);
+                    showStatus(`Authentication failed: ${error}`, true);
+                    authButton.disabled = false;
+                    // Notify parent window if in iframe
+                    window.parent.postMessage({
+                        source: 'puter-web-interface',
+                        type: 'authError',
+                        data: { error }
+                    }, '*');
+                },
+                onPuterActionSuccess: function(operation, result) {
+                    console.log('Android.onPuterActionSuccess called with:', operation, result);
+                    showStatus(`${operation} successful!`);
+                    // Notify parent window if in iframe
+                    window.parent.postMessage({
+                        source: 'puter-web-interface',
+                        type: 'operationSuccess',
+                        data: { operation, result }
+                    }, '*');
+                },
+                onPuterActionError: function(operation, error) {
+                    console.log('Android.onPuterActionError called with:', operation, error);
+                    showStatus(`Error in ${operation}: ${error}`, true);
+                    // Notify parent window if in iframe
+                    window.parent.postMessage({
+                        source: 'puter-web-interface',
+                        type: 'operationError',
+                        data: { operation, error }
+                    }, '*');
+                },
+                onPuterResponse: function(responseJson) {
+                    console.log('Android.onPuterResponse called with:', responseJson);
+                    try {
+                        const response = JSON.parse(responseJson);
+                        // Handle generic response
+                        console.log('Generic response:', response);
+                    } catch (error) {
+                        console.error('Error parsing response JSON:', error);
+                    }
+                }
+            };
+            
+            console.log('Android interface methods registered');
+        });
+    </script>
+</body>
+</html>

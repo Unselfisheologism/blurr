@@ -212,11 +212,7 @@ class MainActivity : BaseNavigationActivity() {
 
     override fun onStart() {
         super.onStart()
-        if (!puterManager.isUserSignedIn()) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
+        checkAuthAndOnboardingStatus()
         
         showLoading(true)
     }
@@ -342,11 +338,7 @@ class MainActivity : BaseNavigationActivity() {
     override fun onResume() {
         super.onResume()
         // Check authentication state when activity resumes
-        if (!puterManager.isUserSignedIn()) {
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-            return
-        }
+        checkAuthAndOnboardingStatus()
         showLoading(true)
         displayDeveloperMessage()
         updateDeltaVisuals(pandaStateManager.getCurrentState())
@@ -375,6 +367,28 @@ class MainActivity : BaseNavigationActivity() {
         if (::pandaStateManager.isInitialized && ::stateChangeListener.isInitialized) {
             pandaStateManager.removeStateChangeListener(stateChangeListener)
             pandaStateManager.stopMonitoring()
+        }
+    }
+
+    /**
+     * Method to check authentication state and redirect if needed
+     */
+    private fun checkAuthAndOnboardingStatus() {
+        val isUserSignedIn = puterManager.isUserSignedIn()
+        val profileManager = UserProfileManager(this)
+        
+        if (!isUserSignedIn || !profileManager.isProfileComplete()) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
+        
+        onboardingManager = OnboardingManager(this)
+        if (!onboardingManager.isOnboardingCompleted()) {
+            Logger.d("MainActivity", "User is logged in but onboarding not completed. Relaunching permissions stepper.")
+            startActivity(Intent(this, OnboardingPermissionsActivity::class.java))
+            finish()
+            return
         }
     }
 

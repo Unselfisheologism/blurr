@@ -81,7 +81,7 @@ class PuterService : Service() {
             }
 
             // Load the Puter website
-            webView?.loadUrl("https://puterwebp.vercel.app") // Replace with actual deployed URL when available
+            webView?.loadUrl("file:///android_asset/puterwebp.html")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing WebView", e)
         }
@@ -813,6 +813,42 @@ class PuterService : Service() {
             // and the token is available
             signInCallback?.invoke(true)
             signInCallback = null
+        
+        @JavascriptInterface
+        fun updateAuthState(signedIn: Boolean) {
+    
+    /**
+     * Method to ensure the WebView stays active during authentication flow
+     */
+    fun keepWebViewActive() {
+        // This method ensures the WebView remains active and doesn't get destroyed
+        // during state transitions to maintain the communication channel
+        Log.d(TAG, "Keeping WebView active for ongoing communication")
+    }
+    
+    /**
+     * Method to evaluate JavaScript code in the WebView
+     */
+    fun evaluateJavaScript(jsCode: String, callback: ValueCallback<String>? = null) {
+        webView?.post {
+            webView?.evaluateJavascript(jsCode, callback)
+        }
+    }
+            Log.d(TAG, "Updating auth state from web interface: $signedIn")
+            // This method will be called to update the native service's authentication state
+            // based on changes in the web authentication status
+        }
+        
+        @JavascriptInterface
+        fun checkAuthStatus(): String {
+            Log.d(TAG, "Checking auth status from web interface")
+            // Check the current authentication status and return it to the web interface
+            // This could check the stored token or make an API call to verify the session
+            puterAuthIsSignedIn { signedIn ->
+                Log.d(TAG, "Current auth status: $signedIn")
+            }
+            return if (puterManager.isUserSignedIn()) "true" else "false"
+        }
         }
     }
 

@@ -101,6 +101,13 @@
             android:label="Puter Web View"
             android:theme="@style/Theme.Blurr"
             android:screenOrientation="portrait" />
+            
+        <!-- Puter Authentication Test Activity -->
+        <activity android:name=".activities.PuterAuthTestActivity"
+            android:exported="false"
+            android:label="Puter Auth Test"
+            android:theme="@style/Theme.Blurr"
+            android:screenOrientation="portrait" />
 
         <!-- Your Other Services -->
         <service
