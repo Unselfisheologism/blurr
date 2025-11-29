@@ -1,0 +1,18 @@
+{
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "features": {
+    // You can add Node feature if your base image doesn't have it
+    // "ghcr.io/devcontainers/features/node:1": {
+    //   "version": "20"
+    // }
+  },
+  "postCreateCommand": "npm install -g @qwen-code/qwen-code@latest",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Optional: Install the Qwen Code Companion extension for VS Code integration
+        "qwen.qwen-code-companion" 
+      ]
+    }
+  }
+}
