@@ -11,7 +11,8 @@
     "vscode": {
       "extensions": [
         // Optional: Install the Qwen Code Companion extension for VS Code integration
-        "qwen.qwen-code-companion" 
+        "qwen.qwen-code-companion",
+        "kilocode.Kilo-Code"
       ]
     }
   }
